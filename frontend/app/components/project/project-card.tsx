@@ -60,11 +60,15 @@ export const ProjectCard = ({
                                 <span>{project.tasks.length}</span>
                                 <span>Tasks</span>
                             </div>
-
                             {project.dueDate && (
-                                <div className="flex items-center text-xs text-muted-foreground">
-                                    <CalendarDays className="w-4 h-4" />
-                                    <span>{format(project.dueDate, "MMM d, yyyy")}</span>
+                                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1">
+                                        <CalendarDays className="w-4 h-4" />
+                                        <span>Due Date</span>
+                                    </div>
+                                    <span className="font-medium text-muted-foreground">
+                                        {format(new Date(project.dueDate), "MMM d, yyyy")}
+                                    </span>
                                 </div>
                             )}
                         </div>

@@ -19,7 +19,7 @@ export const UpcomingTasks = ({ data }: { data: Task[] }) => {
         <Card>
             <CardHeader>
                 <CardTitle>Upcoming Tasks</CardTitle>
-                <CardDescription>Here are the tasks that are due soon</CardDescription>
+                <CardDescription>Tasks close to due date</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">

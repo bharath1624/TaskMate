@@ -39,7 +39,7 @@ export const StatsCard = ({ data }: { data: StatsCardProps }) => {
                 <CardContent>
                     <div className="text-2xl font-bold">{data.totalTaskToDo}</div>
                     <p className="text-xs text-muted-foreground">
-                        Tasks waiting to be done
+                        Tasks to be done
                     </p>
                 </CardContent>
             </Card>
@@ -50,7 +50,7 @@ export const StatsCard = ({ data }: { data: StatsCardProps }) => {
                 <CardContent>
                     <div className="text-2xl font-bold">{data.totalTaskInProgress}</div>
                     <p className="text-xs text-muted-foreground">
-                        Tasks currently in progress
+                        Tasks in progress
                     </p>
                 </CardContent>
             </Card>

@@ -180,13 +180,13 @@ const getWorkspaceStats = async (req, res) => {
 
 
         const taskTrendsData = [
-            { name: "Sun", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Mon", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Tue", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Wed", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Thu", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Fri", completed: 0, inProgress: 0, toDo: 0 },
-            { name: "Sat", completed: 0, inProgress: 0, toDo: 0 },
+            { name: "Sun", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Mon", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Tue", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Wed", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Thu", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Fri", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Sat", completed: 0, inProgress: 0, todo: 0 },
         ];
 
         // get last 7 days tasks date
@@ -225,7 +225,7 @@ const getWorkspaceStats = async (req, res) => {
                                 dayData.inProgress++;
                                 break;
                             case "To Do":
-                                dayData.toDo++;
+                                dayData.todo++;
                                 break;
                         }
                     }
@@ -292,7 +292,6 @@ const getWorkspaceStats = async (req, res) => {
                 total: projectTask.length,
             });
         }
-
         const stats = {
             totalProjects,
             totalTasks,
@@ -309,7 +308,7 @@ const getWorkspaceStats = async (req, res) => {
             taskPriorityData,
             workspaceProductivityData,
             upcomingTasks,
-            recentProjects: projects.slice(0, 5),
+            recentProjects: projects.slice(0, 3),
         });
     } catch (error) {
         console.log(error);

@@ -27,7 +27,14 @@ export const ProjectList = ({
                     />
                 ) : (
                     projects.map((project) => {
-                        const projectProgress = 0;
+                        const totalTasks = project.tasks.length;
+
+                        const completedTasks = project.tasks.filter(
+                            (task) => task.status === "Done"
+                        ).length;
+
+                        const projectProgress =
+                            totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
                         return (
                             <ProjectCard

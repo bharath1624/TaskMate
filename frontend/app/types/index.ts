@@ -79,6 +79,7 @@ export interface Task {
     subtasks?: Subtask[];
     watchers?: User[];
     attachments?: Attachment[];
+    timeSpent?: number;
 }
 export interface Attachment {
     fileName: string;
@@ -182,3 +183,4 @@ export interface WorkspaceProductivityData {
     completed: number;
     total: number;
 }
+
