@@ -22,6 +22,10 @@ import { format, formatDistanceToNow } from "date-fns";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
+import { useDeleteTaskMutation } from "@/hooks/use-task";
+import { api } from "@/lib/fetch-util";
+import { TaskAttachments } from "./task-attachement";
+
 
 const TaskDetails = () => {
     const { user } = useAuth();
@@ -40,8 +44,9 @@ const TaskDetails = () => {
         isLoading: boolean;
     };
     const { mutate: watchTask, isPending: isWatching } = useWatchTaskMutation();
-    const { mutate: achievedTask, isPending: isAchieved } =
-        useAchievedTaskMutation();
+    const { mutate: achievedTask, isPending: isAchieved } = useAchievedTaskMutation();
+    const { mutate: deleteTask, isPending: isDeleting } = useDeleteTaskMutation();
+
 
     if (isLoading) {
         return (
@@ -94,6 +99,55 @@ const TaskDetails = () => {
                 },
             }
         );
+    };
+
+    const handleDeleteTask = () => {
+        if (!confirm("This will permanently delete the task. Continue?")) return;
+
+        deleteTask(
+            { taskId: task._id },
+            {
+                onSuccess: () => {
+                    toast.success("Task permanently deleted");
+
+                    navigate(
+                        `/workspaces/${workspaceId}/projects/${projectId}`
+                    );
+                },
+                onError: () => {
+                    toast.error("Delete failed");
+                },
+            }
+        );
+    };
+
+
+    const addTaskAttachment = async ({
+        taskId,
+        data,
+    }: {
+        taskId: string;
+        data: FormData;
+    }) => {
+        const res = await api.post(`/tasks/${taskId}/attachments`, data, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+        return res.data;
+    };
+
+    const deleteTaskAttachment = async ({
+        taskId,
+        attachmentId,
+    }: {
+        taskId: string;
+        attachmentId: string;
+    }) => {
+        const res = await api.delete(
+            `/tasks/${taskId}/attachments/${attachmentId}`
+        );
+        return res.data;
     };
 
     return (
@@ -164,8 +218,8 @@ const TaskDetails = () => {
 
                                 <TaskTitle title={task.title} taskId={task._id} />
 
-                                <div className="text-sm md:text-base text-muted-foreground">
-                                    Created at:{" "}
+                                <div className="text-sm font-medium">
+                                    Created :{" "}
                                     {formatDistanceToNow(new Date(task.createdAt), {
                                         addSuffix: true,
                                     })}
@@ -174,20 +228,21 @@ const TaskDetails = () => {
 
                             <div className="flex items-center gap-2 mt-4 md:mt-0">
                                 <TaskStatusSelector status={task.status} taskId={task._id} />
-
                                 <Button
-                                    variant={"destructive"}
+                                    variant="destructive"
                                     size="sm"
-                                    onClick={() => { }}
+                                    onClick={handleDeleteTask}
+                                    disabled={isDeleting}
                                     className="hidden md:block"
                                 >
-                                    Delete Task
+                                    {isDeleting ? "Deleting..." : "Delete Task"}
                                 </Button>
+
                             </div>
                         </div>
 
                         <div className="mb-6">
-                            <h3 className="text-sm font-medium text-muted-foreground mb-0">
+                            <h3 className="text-sm font-medium">
                                 Description
                             </h3>
 
@@ -197,15 +252,28 @@ const TaskDetails = () => {
                             />
                         </div>
 
-                        <TaskAssigneesSelector
-                            task={task}
-                            assignees={task.assignees}
-                            projectMembers={project.members as any}
-                        />
+                        <div className="space-y-6">
+                            <TaskAssigneesSelector
+                                task={task}
+                                assignees={task.assignees}
+                                projectMembers={project.members as any}
+                            />
+                            <h3 className="text-sm font-medium">
+                                Task Priority
+                            </h3>
+                            <TaskPrioritySelector
+                                priority={task.priority}
+                                taskId={task._id}
+                            />
 
-                        <TaskPrioritySelector priority={task.priority} taskId={task._id} />
+                            <TaskAttachments task={task} />
 
-                        <SubTasksDetails subTasks={task.subtasks || []} taskId={task._id} />
+                            <SubTasksDetails
+                                subTasks={task.subtasks || []}
+                                taskId={task._id}
+                            />
+                        </div>
+
                     </div>
 
                     <CommentSection taskId={task._id} members={project.members as any} />

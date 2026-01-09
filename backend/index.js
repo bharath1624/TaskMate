@@ -7,6 +7,7 @@ import http from "http";
 import { Server } from "socket.io";
 import routes from "./routes/index.js"
 import { dueDateReminderJob } from "./due-date.js"
+import path from "path";
 
 dotenv.config()
 
@@ -41,6 +42,11 @@ app.use(express.json())
 const PORT = process.env.PORT || 5000;
 
 app.use("/uploads", express.static("uploads"));
+
+app.use(
+    "/uploads",
+    express.static(path.join(process.cwd(), "uploads"))
+);
 
 app.get("/", async (req, res) => {
     res.status(200).json({

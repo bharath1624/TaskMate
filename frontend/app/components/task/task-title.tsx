@@ -42,7 +42,7 @@ export const TaskTitle = ({
                     disabled={isPending}
                 />
             ) : (
-                <h2 className="text-xl flex-1 font-semibold">{title}</h2>
+                <h2 className="text-xl flex-1 font-semibold space-y-6">{title}</h2>
             )}
 
             {isEditing ? (

@@ -11,6 +11,7 @@ import {
     FolderPlus,
     LogIn,
     MessageSquare,
+    Trash,
     Upload,
     UserMinus,
     UserPlus,
@@ -97,6 +98,13 @@ export const getActivityIcon = (action: ActionType) => {
                     <Upload className="h-5 w-5 text-blue-600 rounded-full" />
                 </div>
             );
+        case "removed_attachment":
+            return (
+                <div className="bg-red-600/10 p-2 rounded-md">
+                    <Trash className="h-5 w-5 text-red-600 rounded-full" />
+                </div>
+            );
+
         default:
             return null;
     }

@@ -1,5 +1,5 @@
 import type { CreateTaskFormData } from "@/components/task/create-task-dialog";
-import { fetchData, postData, updateData } from "@/lib/fetch-util";
+import { deleteData, fetchData, postData, updateData } from "@/lib/fetch-util";
 import type { TaskPriority, TaskStatus } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -217,5 +217,67 @@ export const useGetMyTasksQuery = () => {
         queryFn: () => fetchData("/tasks/my-tasks"),
     });
 };
+
+export const useDeleteTaskMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ taskId }: { taskId: string }) =>
+            deleteData(`/tasks/${taskId}`),
+
+        onSuccess: (data: any) => {
+            queryClient.invalidateQueries({
+                queryKey: ["project", data.project],
+            });
+        },
+    });
+};
+
+export const useAddTaskAttachmentMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: {
+            taskId: string;
+            formData: FormData;
+        }) =>
+            postData(
+                `/tasks/${data.taskId}/attachments`,
+                data.formData
+            ),
+
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["task", variables.taskId],
+            });
+        }
+    });
+};
+
+export const useDeleteTaskAttachmentMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: {
+            taskId: string;
+            attachmentId: string;
+        }) =>
+            deleteData(
+                `/tasks/${data.taskId}/attachments/${data.attachmentId}`
+            ),
+
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["task", variables.taskId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["task-activity", variables.taskId],
+            });
+        },
+    });
+};
+
+
+
 
 

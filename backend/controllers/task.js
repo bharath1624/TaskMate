@@ -6,7 +6,8 @@ import ActivityLog from "../models/activity.js";
 import Comment from "../models/comment.js";
 import { recordActivity } from "../libs/index.js";
 import Notification from "../models/notification.js";
-import { io } from "../index.js"; // OR "../server.js" (see note below)
+import { io } from "../index.js";
+import mongoose from "mongoose";
 
 const createTask = async (req, res) => {
     try {
@@ -561,7 +562,6 @@ const addComment = async (req, res) => {
         });
     }
 };
-
 const watchTask = async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -682,6 +682,145 @@ const getMyTasks = async (req, res) => {
         });
     }
 };
+const deleteTask = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        // remove task from project
+        await Project.findByIdAndUpdate(task.project, {
+            $pull: { tasks: taskId },
+        });
+
+        // delete related data
+        await Comment.deleteMany({ task: taskId });
+        await ActivityLog.deleteMany({ resourceId: taskId });
+
+        // delete task
+        await Task.findByIdAndDelete(taskId);
+
+        return res.status(200).json({
+            success: true,
+            taskId,
+            project: task.project,
+        });
+    } catch (error) {
+        console.error("DELETE TASK ERROR:", error);
+        return res.status(500).json({ message: "Delete failed" });
+    }
+};
+const addTaskAttachment = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const { type, fileName, fileUrl } = req.body;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        // permissions
+        const project = await Project.findById(task.project);
+        const isMember = project.members.some(
+            (m) => m.user.toString() === req.user._id.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: "Not allowed" });
+        }
+
+        let attachment; // ✅ declare ONCE
+
+        if (type === "file") {
+            if (!req.file) {
+                return res.status(400).json({ message: "File is required" });
+            }
+
+            attachment = {
+                type: "file",
+                fileName: req.file.originalname,
+                fileUrl: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
+                fileType: req.file.mimetype,
+                fileSize: req.file.size,
+                uploadedBy: req.user._id,
+            };
+
+        } else {
+            attachment = {
+                type: "url",
+                fileName,
+                fileUrl,
+                uploadedBy: req.user._id,
+            };
+        }
+        if (!attachment || !attachment.fileUrl) {
+            return res.status(400).json({ message: "Invalid attachment" });
+        }
+
+        task.attachments.push(attachment);
+        await task.save();
+
+        await recordActivity(req.user._id, "added_attachment", "Task", taskId, {
+            description: `added attachment ${attachment.fileName}`,
+        });
+
+        res.status(201).json(task);
+    } catch (error) {
+        console.error("ADD ATTACHMENT ERROR:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const deleteTaskAttachment = async (req, res) => {
+    try {
+        const { taskId, attachmentId } = req.params;
+
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return res.status(404).json({ message: "Task not found" });
+        }
+
+        // permission check
+        const project = await Project.findById(task.project);
+        const isMember = project.members.some(
+            (m) => m.user.toString() === req.user._id.toString()
+        );
+        if (!isMember) {
+            return res.status(403).json({ message: "Not allowed" });
+        }
+
+        // ✅ DEFINE IT HERE (IMPORTANT)
+        const attachmentExists = task.attachments.some(
+            (att) => att && att._id && att._id.toString() === attachmentId
+        );
+
+        if (!attachmentExists) {
+            return res.status(404).json({ message: "Attachment not found" });
+        }
+
+        // ✅ NULL-SAFE REMOVE
+        task.attachments = task.attachments.filter(
+            (att) => att && att._id && att._id.toString() !== attachmentId
+        );
+
+        await task.save();
+
+        // activity log
+        await recordActivity(req.user._id, "removed_attachment", "Task", taskId, {
+            description: "removed an attachment",
+        });
+
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("DELETE ATTACHMENT ERROR:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+
 export {
     createTask,
     getTaskById,
@@ -697,5 +836,8 @@ export {
     addComment,
     watchTask,
     achievedTask,
-    getMyTasks
+    getMyTasks,
+    deleteTask,
+    addTaskAttachment,
+    deleteTaskAttachment
 };

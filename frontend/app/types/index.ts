@@ -119,7 +119,8 @@ export type ActionType =
     | "added_member"
     | "removed_member"
     | "joined_workspace"
-    | "added_attachment";
+    | "added_attachment"
+    | "removed_attachment";
 
 export interface ActivityLog {
     _id: string;

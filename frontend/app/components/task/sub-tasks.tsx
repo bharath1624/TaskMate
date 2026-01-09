@@ -57,7 +57,7 @@ export const SubTasksDetails = ({
 
     return (
         <div className="mb-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-0">
+            <h3 className="text-sm font-medium">
                 Sub Tasks
             </h3>
 
@@ -84,9 +84,7 @@ export const SubTasksDetails = ({
                             </label>
                         </div>
                     ))
-                ) : (
-                    <div className="text-sm text-muted-foreground">No sub tasks</div>
-                )}
+                ) : null}
             </div>
 
             <div className="flex ">

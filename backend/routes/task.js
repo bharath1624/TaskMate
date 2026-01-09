@@ -3,7 +3,8 @@ import express from "express";
 import { z } from "zod";
 import { validateRequest } from "zod-express-middleware";
 import { taskSchema } from "../libs/validate-schema.js";
-import { achievedTask, addComment, addSubTask, createTask, getActivityByResourceId, getCommentsByTaskId, getMyTasks, getTaskById, updateSubTask, updateTaskAssignees, updateTaskDescription, updateTaskPriority, updateTaskStatus, updateTaskTitle, watchTask } from "../controllers/task.js";
+import attachement from "../middleware/attachment.js";
+import { achievedTask, addComment, addSubTask, addTaskAttachment, createTask, deleteTask, deleteTaskAttachment, getActivityByResourceId, getCommentsByTaskId, getMyTasks, getTaskById, updateSubTask, updateTaskAssignees, updateTaskDescription, updateTaskPriority, updateTaskStatus, updateTaskTitle, watchTask } from "../controllers/task.js";
 
 const router = express.Router();
 
@@ -105,6 +106,15 @@ router.put(
     }),
     updateTaskAssignees
 );
+router.delete(
+    "/:taskId",
+    authMiddleware,
+    validateRequest({
+        params: z.object({ taskId: z.string() }),
+    }),
+    deleteTask
+);
+
 router.get("/my-tasks", authMiddleware, getMyTasks);
 router.put(
     "/:taskId/priority",
@@ -143,4 +153,34 @@ router.get(
     }),
     getCommentsByTaskId
 );
+// ➕ Add attachment (file or URL)
+router.post(
+    "/:taskId/attachments",
+    authMiddleware,
+    attachement.single("file"), // 👈 MULTER HERE
+    validateRequest({
+        params: z.object({ taskId: z.string() }),
+        body: z.object({
+            type: z.enum(["file", "url"]),
+            fileName: z.string().optional(),
+            fileUrl: z.string().optional(),
+        }),
+    }),
+    addTaskAttachment
+);
+
+// ❌ Delete attachment
+router.delete(
+    "/:taskId/attachments/:attachmentId",
+    authMiddleware,
+    validateRequest({
+        params: z.object({
+            taskId: z.string(),
+            attachmentId: z.string(),
+        }),
+    }),
+    deleteTaskAttachment
+);
+
+
 export default router;

@@ -68,7 +68,7 @@ export const TaskAssigneesSelector = ({
 
     return (
         <div className="mb-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            <h3 className="text-sm font-medium">
                 Assignees
             </h3>
 

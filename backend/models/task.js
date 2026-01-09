@@ -46,6 +46,11 @@ const taskSchema = new Schema(
         comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
         attachments: [
             {
+                type: {
+                    type: String,
+                    enum: ["file", "url"],
+                    required: true,
+                },
                 fileName: { type: String, required: true },
                 fileUrl: { type: String, required: true },
                 fileType: { type: String },
