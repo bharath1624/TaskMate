@@ -5,6 +5,8 @@ import Workspace from "../models/workspace.js";
 import ActivityLog from "../models/activity.js";
 import Comment from "../models/comment.js";
 import { recordActivity } from "../libs/index.js";
+import Notification from "../models/notification.js";
+import { io } from "../index.js"; // OR "../server.js" (see note below)
 
 const createTask = async (req, res) => {
     try {
@@ -37,6 +39,13 @@ const createTask = async (req, res) => {
                 message: "You are not a member of this workspace",
             });
         }
+        console.log("📦 Incoming assignees:", assignees);
+        const normalizedAssignees = Array.isArray(assignees)
+            ? assignees
+            : assignees
+                ? [assignees]
+                : [];
+
 
         const newTask = await Task.create({
             title,
@@ -44,13 +53,40 @@ const createTask = async (req, res) => {
             status,
             priority,
             dueDate,
-            assignees,
+            assignees: normalizedAssignees,
             project: projectId,
             createdBy: req.user._id,
         });
-
         project.tasks.push(newTask._id);
         await project.save();
+        // 🔔 NOTIFY ASSIGNEES (REAL-TIME + DB)
+        if (normalizedAssignees.length > 0) {
+            // 🔔 NOTIFY ASSIGNEES (DB + REAL-TIME)
+            for (const userId of normalizedAssignees) {
+                await Notification.create({
+                    user: userId,
+                    title: "Task assigned",
+                    message: `You were assigned to task "${newTask.title}"`,
+                    targetType: "task",
+                    targetId: newTask._id,
+                    projectId: project._id,
+                    workspaceId: workspace._id,
+                });
+
+                io.to(userId.toString()).emit("notification", {
+                    title: "Task assigned",
+                    message: `You were assigned to task "${newTask.title}"`,
+                    targetType: "task",
+                    targetId: newTask._id,
+                    projectId: project._id,
+                    workspaceId: workspace._id,
+                });
+
+                console.log("📢 Notification emitted to:", userId.toString());
+            }
+
+        }
+
 
         res.status(201).json(newTask);
     } catch (error) {

@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
+import { NotificationBell } from "../notification-bell";
 
 interface HeaderProps {
     workspaces?: Workspace[];
@@ -89,9 +90,14 @@ export const Header = ({
                 </DropdownMenu>
 
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon">
-                        <Bell />
-                    </Button>
+
+
+                    <div className="flex items-center gap-2">
+                        {user && <NotificationBell userId={user._id} />}
+
+                        {/* Avatar dropdown stays as-is */}
+                    </div>
+
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>

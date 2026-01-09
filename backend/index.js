@@ -3,9 +3,11 @@ import dotenv from "dotenv"
 import express from "express"
 import mongoose from "mongoose"
 import morgan from "morgan"
-
-
+import http from "http";
+import { Server } from "socket.io";
 import routes from "./routes/index.js"
+import { dueDateReminderJob } from "./due-date.js"
+
 dotenv.config()
 
 const app = express()
@@ -14,7 +16,7 @@ app.use(
     cors({
         origin: process.env.FRONTEND_URL,
         credentials: true,   // ✅ REQUIRED
-        methods: ["GET", "POST", "DELETE", "PUT"],
+        methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
     })
 );
@@ -25,6 +27,13 @@ app.use(morgan("dev"));
 mongoose
     .connect(process.env.MONGODB_URI)
     .then(() => console.log("DB Connected successfully."))
+    .catch((err) => console.log("Failed to connect to DB:", err));
+mongoose
+    .connect(process.env.MONGODB_URI)
+    .then(() => {
+        console.log("DB Connected successfully.");
+        dueDateReminderJob(); // 🔥 start cron after DB is ready
+    })
     .catch((err) => console.log("Failed to connect to DB:", err));
 
 app.use(express.json())
@@ -56,6 +65,27 @@ app.use((req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: process.env.FRONTEND_URL,
+        credentials: true,
+        methods: ["GET", "POST"],
+    },
+});
+io.on("connection", (socket) => {
+    console.log("🔔 User connected:", socket.id);
+
+    socket.on("join", (userId) => {
+        socket.join(userId);
+        console.log(`User ${userId} joined notification room`);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("❌ User disconnected:", socket.id);
+    });
+});
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+export { io };

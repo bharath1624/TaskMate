@@ -6,7 +6,7 @@ import { fetchData } from '@/lib/fetch-util';
 import { useAuth } from '@/provider/auth-context';
 import type { Workspace } from '@/types';
 import React, { useState, useEffect } from 'react';
-import { Navigate, Outlet, useLoaderData, useNavigate } from 'react-router';
+import { Navigate, Outlet, useLoaderData, useNavigate, useLocation } from 'react-router';
 
 export const clientLoader = async () => {
     const workspaces = await fetchData("/workspaces");
@@ -21,6 +21,8 @@ const DashboardLayout = () => {
     const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
     const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
 
+    const location = useLocation();
+
     useEffect(() => {
         if (workspaces?.length > 0 && !currentWorkspace) {
             const params = new URLSearchParams(window.location.search);
@@ -33,9 +35,16 @@ const DashboardLayout = () => {
             const workspaceToSet = foundWorkspace || workspaces[0];
 
             setCurrentWorkspace(workspaceToSet);
-            navigate(`/dashboard?workspaceId=${workspaceToSet._id}`, { replace: true });
+
+            // ✅ ONLY redirect if user is on dashboard
+            if (location.pathname === "/dashboard") {
+                navigate(`/dashboard?workspaceId=${workspaceToSet._id}`, {
+                    replace: true,
+                });
+            }
         }
-    }, [workspaces]);
+    }, [workspaces, location.pathname]);
+
 
 
     if (isLoading) return <Loader />;

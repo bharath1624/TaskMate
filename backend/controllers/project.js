@@ -1,7 +1,8 @@
 import Workspace from "../models/workspace.js";
 import Project from "../models/project.js";
 import Task from "../models/task.js";
-
+import Notification from "../models/notification.js";
+import { io } from "../index.js";
 
 const createProject = async (req, res) => {
     try {
@@ -28,7 +29,6 @@ const createProject = async (req, res) => {
         }
 
         const tagArray = tags ? tags.split(",") : [];
-
         const newProject = await Project.create({
             title,
             description,
@@ -43,6 +43,39 @@ const createProject = async (req, res) => {
 
         workspace.projects.push(newProject._id);
         await workspace.save();
+        // extract userIds from members [{ user, role }]
+        const memberUserIds = Array.isArray(members)
+            ? members.map(m => m.user)
+            : [];
+
+        console.log("👥 Extracted memberUserIds:", memberUserIds);
+
+        // 🔔 Project assignment notifications
+        for (const userId of memberUserIds) {
+            // optional: skip creator
+            // if (userId.toString() === req.user._id.toString()) continue;
+
+            await Notification.create({
+                user: userId,
+                title: "Project assigned",
+                message: `You were added to "${newProject.title}" project`,
+                targetType: "project",
+                targetId: newProject._id,
+                workspaceId: workspace._id,
+            });
+
+            io.to(userId.toString()).emit("notification", {
+                title: "Project assigned",
+                message: `You were added to "${newProject.title}" project`,
+                targetType: "project",
+                targetId: newProject._id,
+                workspaceId: workspace._id,
+            });
+        }
+
+
+
+
 
         return res.status(201).json(newProject);
     } catch (error) {
