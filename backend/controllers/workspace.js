@@ -67,6 +67,45 @@ const getWorkspaceDetails = async (req, res) => {
         res.status(200).json(workspace);
     } catch (error) { }
 };
+const updateWorkspace = async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+        const { name, description, color } = req.body;
+
+        const workspace = await Workspace.findById(workspaceId);
+
+        if (!workspace) {
+            return res.status(404).json({
+                message: "Workspace not found",
+            });
+        }
+
+        // 🔐 Permission check (owner or admin)
+        const member = workspace.members.find(
+            (m) => m.user.toString() === req.user._id.toString()
+        );
+
+        if (!member || !["owner", "admin"].includes(member.role)) {
+            return res.status(403).json({
+                message: "You are not allowed to update this workspace",
+            });
+        }
+
+        // Update only provided fields
+        if (name !== undefined) workspace.name = name;
+        if (description !== undefined) workspace.description = description;
+        if (color !== undefined) workspace.color = color;
+
+        await workspace.save();
+
+        res.status(200).json(workspace);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+};
 
 const getWorkspaceProjects = async (req, res) => {
     try {
@@ -557,6 +596,97 @@ const acceptInviteByToken = async (req, res) => {
         });
     }
 };
+const transferWorkspaceOwnership = async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+        const { newOwnerId } = req.body;
+
+        const workspace = await Workspace.findById(workspaceId);
+
+        if (!workspace) {
+            return res.status(404).json({ message: "Workspace not found" });
+        }
+
+        // Only current owner can transfer
+        if (workspace.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "Only owner can transfer workspace ownership",
+            });
+        }
+
+        const newOwnerMember = workspace.members.find(
+            (m) => m.user.toString() === newOwnerId
+        );
+
+        if (!newOwnerMember) {
+            return res.status(400).json({
+                message: "New owner must be a workspace member",
+            });
+        }
+
+        // Update member roles
+        workspace.members = workspace.members.map((m) => {
+            if (m.user.toString() === newOwnerId) {
+                return { ...m.toObject(), role: "owner" };
+            }
+            if (m.role === "owner") {
+                return { ...m.toObject(), role: "admin" };
+            }
+            return m;
+        });
+
+        workspace.owner = newOwnerId;
+
+        await workspace.save();
+
+        res.status(200).json(workspace);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+const deleteWorkspace = async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+
+        const workspace = await Workspace.findById(workspaceId);
+
+        if (!workspace) {
+            return res.status(404).json({
+                message: "Workspace not found",
+            });
+        }
+
+        if (workspace.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "Only owner can delete this workspace",
+            });
+        }
+
+        // Optional cleanup (recommended)
+        await Promise.all([
+            Project.deleteMany({ workspace: workspaceId }),
+            Task.deleteMany({ workspace: workspaceId }),
+            WorkspaceInvite.deleteMany({ workspaceId }),
+        ]);
+
+        await Workspace.findByIdAndDelete(workspaceId);
+
+        res.status(200).json({
+            message: "Workspace deleted successfully",
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Internal server error",
+        });
+    }
+};
 
 
-export { createWorkspace, getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats, getArchivedData, inviteUserToWorkspace, acceptGenerateInvite, acceptInviteByToken };
+export {
+    createWorkspace,
+    getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats,
+    getArchivedData, inviteUserToWorkspace, acceptGenerateInvite, acceptInviteByToken,
+    updateWorkspace, transferWorkspaceOwnership, deleteWorkspace
+};

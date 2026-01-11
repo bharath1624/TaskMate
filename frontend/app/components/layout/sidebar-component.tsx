@@ -43,7 +43,9 @@ export const SidebarComponent = ({
         },
         {
             title: "Settings",
-            href: "/settings",
+            href: currentWorkspace
+                ? `/workspaces/${currentWorkspace._id}/settings`
+                : "/workspaces",
             icon: Settings,
         },
     ];

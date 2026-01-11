@@ -163,7 +163,7 @@ const ProjectSettings = () => {
                     </Card>
 
                     {/* Danger Zone */}
-                    <Card className="border-red-200">
+                    <Card className="border-red-200 mb-5">
                         <CardHeader>
                             <h3 className="text-red-600 font-semibold">Danger Zone</h3>
                             <p className="text-sm text-muted-foreground">

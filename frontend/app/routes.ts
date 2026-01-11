@@ -15,6 +15,10 @@ export default [
         route("workspaces", "routes/dashboard/workspaces/index.tsx"),
         route("workspaces/:workspaceId", "routes/dashboard/workspaces/workspace-details.tsx"),
         route(
+            "workspaces/:workspaceId/settings",
+            "routes/dashboard/workspaces/workspace-settings.tsx"
+        ),
+        route(
             "workspaces/:workspaceId/projects/:projectId",
             "routes/dashboard/project/project-details.tsx"
         ),
