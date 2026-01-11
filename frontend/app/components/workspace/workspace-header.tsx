@@ -24,7 +24,7 @@ export const WorkspaceHeader = ({
     onInviteMember,
 }: WorkspaceHeaderProps) => {
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pt-5">
             <div className="space-y-3">
                 <div className="flex flex-col-reverse md:flex-row md:justify-between md:items-center gap-3">
                     <div className="flex md:items-center gap-3">

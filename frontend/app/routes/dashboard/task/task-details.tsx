@@ -154,8 +154,6 @@ const TaskDetails = () => {
         <div className="container mx-auto p-0 py-4 md:px-4">
             <div className="flex flex-col md:flex-row items-center justify-between mb-6">
                 <div className="flex flex-col md:flex-row md:items-center">
-                    <BackButton />
-
                     <h1 className="text-xl md:text-2xl font-bold">{task.title}</h1>
 
                     {task.isArchived && (

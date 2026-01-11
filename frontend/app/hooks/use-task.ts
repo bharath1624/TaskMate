@@ -46,17 +46,29 @@ export const useUpdateTaskStatusMutation = () => {
 
     return useMutation({
         mutationFn: (data: { taskId: string; status: TaskStatus }) =>
-            updateData(`/tasks/${data.taskId}/status`, { status: data.status }),
+            updateData(`/tasks/${data.taskId}/status`, {
+                status: data.status,
+            }),
+
         onSuccess: (data: any) => {
+            // refresh task detail
             queryClient.invalidateQueries({
                 queryKey: ["task", data._id],
             });
+
+            // refresh task activity
             queryClient.invalidateQueries({
                 queryKey: ["task-activity", data._id],
+            });
+
+            // 🔥 THIS IS THE IMPORTANT PART
+            queryClient.invalidateQueries({
+                queryKey: ["project", data.project],
             });
         },
     });
 };
+
 
 export const useUpdateTaskDescriptionMutation = () => {
     const queryClient = useQueryClient();

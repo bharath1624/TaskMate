@@ -1,14 +1,16 @@
 import express from "express";
 import authMiddleware from "../middleware/auth-middleware.js";
 import { validateRequest } from "zod-express-middleware";
-import { projectSchema } from "../libs/validate-schema.js";
+import { projectSchema, updateProjectSchema } from "../libs/validate-schema.js";
 import { z } from "zod";
 import {
     archiveProject,
     createProject,
+    deleteProject,
     getProjectDetails,
     getProjectTasks,
-    toggleArchiveProject
+    toggleArchiveProject,
+    updateProject
 } from "../controllers/project.js";
 
 const router = express.Router();
@@ -40,18 +42,29 @@ router.get(
     validateRequest({ params: z.object({ projectId: z.string() }) }),
     getProjectTasks
 );
-
-
-/*router.patch(
-    "/:projectId/archive",
+router.patch(
+    "/:projectId",
     authMiddleware,
-    archiveProject
-);*/
+    validateRequest({
+        params: z.object({ projectId: z.string() }),
+        body: updateProjectSchema,
+    }),
+    updateProject
+);
+
+
 
 router.patch(
     "/:projectId/archive",
     authMiddleware,
     toggleArchiveProject
 );
-
+router.delete(
+    "/:projectId",
+    authMiddleware,
+    validateRequest({
+        params: z.object({ projectId: z.string() }),
+    }),
+    deleteProject
+);
 export default router;

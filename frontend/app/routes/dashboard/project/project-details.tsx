@@ -1,4 +1,3 @@
-import { BackButton } from "@/components/back-button";
 import { Loader } from "@/components/loader";
 import { CreateTaskDialog } from "@/components/task/create-task-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,10 +11,12 @@ import { getProjectProgress } from "@/lib";
 import { cn } from "@/lib/utils";
 import type { Project, Task, TaskStatus } from "@/types";
 import { format } from "date-fns";
-import { AlertCircle, Calendar, CheckCircle, Clock } from "lucide-react";
+import { AlertCircle, Calendar, CheckCircle, Clock, Settings } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { useUpdateTaskStatusMutation } from "@/hooks/use-task";
+import { Inbox, ClipboardList, ListTodo } from "lucide-react";
 
 const ProjectDetails = () => {
     const { projectId, workspaceId } = useParams<{
@@ -50,10 +51,9 @@ const ProjectDetails = () => {
         );
     };
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pt-5">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <BackButton />
                     <div className="flex items-center gap-3">
                         <h1 className="text-xl md:text-2xl font-bold">{project.title}</h1>
                     </div>
@@ -74,6 +74,18 @@ const ProjectDetails = () => {
                     </div>
 
                     <Button onClick={() => setIsCreateTask(true)}>Add Task</Button>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        title="Project Settings"
+                        onClick={() =>
+                            navigate(
+                                `/workspaces/${workspaceId}/projects/${projectId}/settings`
+                            )
+                        }
+                    >
+                        <Settings className="size-4" />
+                    </Button>
                 </div>
             </div>
 
@@ -191,6 +203,15 @@ interface TaskColumnProps {
     onTaskClick: (taskId: string) => void;
     isFullWidth?: boolean;
 }
+const EmptyColumn = () => {
+    return (
+        <div className="flex flex-col items-center justify-center h-40 gap-2 rounded-lg border-2 border-dashed border-muted text-sm text-muted-foreground">
+            <Inbox className="size-5 opacity-60" />
+            No tasks
+        </div>
+
+    );
+};
 
 const TaskColumn = ({
     title,
@@ -226,9 +247,7 @@ const TaskColumn = ({
                     )}
                 >
                     {tasks.length === 0 ? (
-                        <div className="text-center text-sm text-muted-foreground">
-                            No tasks yet
-                        </div>
+                        <EmptyColumn />
                     ) : (
                         tasks.map((task) => (
                             <TaskCard
@@ -238,6 +257,7 @@ const TaskColumn = ({
                             />
                         ))
                     )}
+
                 </div>
             </div>
         </div>
@@ -245,6 +265,9 @@ const TaskColumn = ({
 };
 
 const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
+    const { mutate: updateTaskStatus, isPending } =
+        useUpdateTaskStatusMutation();
+
     return (
         <Card
             onClick={onClick}
@@ -267,50 +290,61 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
                     <div className="flex gap-1">
                         {task.status !== "To Do" && (
                             <Button
-                                variant={"ghost"}
-                                size={"icon"}
+                                variant="ghost"
+                                size="icon"
                                 className="size-6"
-                                onClick={() => {
-                                    console.log("mark as to do");
-                                }}
                                 title="Mark as To Do"
+                                disabled={isPending}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateTaskStatus({
+                                        taskId: task._id,
+                                        status: "To Do",
+                                    });
+                                }}
                             >
-                                <AlertCircle className={cn("size-4")} />
-                                <span className="sr-only">Mark as To Do</span>
+                                <AlertCircle className="size-4" />
                             </Button>
                         )}
                         {task.status !== "In Progress" && (
                             <Button
-                                variant={"ghost"}
-                                size={"icon"}
+                                variant="ghost"
+                                size="icon"
                                 className="size-6"
-                                onClick={() => {
-                                    console.log("mark as in progress");
-                                }}
                                 title="Mark as In Progress"
+                                disabled={isPending}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateTaskStatus({
+                                        taskId: task._id,
+                                        status: "In Progress",
+                                    });
+                                }}
                             >
-                                <Clock className={cn("size-4")} />
-                                <span className="sr-only">Mark as In Progress</span>
+                                <Clock className="size-4" />
                             </Button>
                         )}
                         {task.status !== "Done" && (
                             <Button
-                                variant={"ghost"}
-                                size={"icon"}
+                                variant="ghost"
+                                size="icon"
                                 className="size-6"
-                                onClick={() => {
-                                    console.log("mark as done");
-                                }}
                                 title="Mark as Done"
+                                disabled={isPending}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateTaskStatus({
+                                        taskId: task._id,
+                                        status: "Done",
+                                    });
+                                }}
                             >
-                                <CheckCircle className={cn("size-4")} />
-                                <span className="sr-only">Mark as Done</span>
+                                <CheckCircle className="size-4" />
                             </Button>
                         )}
                     </div>
                 </div>
             </CardHeader>
-
             <CardContent>
                 <h4 className="ont-medium mb-2">{task.title}</h4>
 
@@ -342,8 +376,6 @@ const TaskCard = ({ task, onClick }: { task: Task; onClick: () => void }) => {
                                         </AvatarFallback>
                                     </Avatar>
                                 ))}
-
-
                                 {task.assignees.length > 5 && (
                                     <span className="text-xs text-muted-foreground">
                                         + {task.assignees.length - 5}

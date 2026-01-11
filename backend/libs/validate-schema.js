@@ -51,7 +51,7 @@ const projectSchema = z.object({
         .array(
             z.object({
                 user: z.string(),
-                role: z.enum(["manager", "contributor", "viewer"]),
+                role: z.enum(["admin", "member", "viewer"]),
             })
         )
         .optional(),
@@ -64,4 +64,19 @@ const taskSchema = z.object({
     dueDate: z.string().min(1, "Due date is required"),
     assignees: z.array(z.string()).min(1, "At least one assignee is required"),
 });
-export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema, emailSchema, workspaceSchema, projectSchema, taskSchema, inviteMemberSchema, tokenSchema };
+const updateProjectSchema = z.object({
+    title: z.string().min(3).optional(),
+    description: z.string().optional(),
+    status: z.enum([
+        "Planning",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled",
+    ]).optional(),
+    startDate: z.string().optional(),
+    dueDate: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+});
+
+export { registerSchema, loginSchema, verifyEmailSchema, resetPasswordSchema, emailSchema, workspaceSchema, projectSchema, taskSchema, inviteMemberSchema, tokenSchema, updateProjectSchema };

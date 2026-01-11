@@ -112,7 +112,7 @@ const MyTasks = () => {
             </div>
         );
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-5">
             <div className="flex items-start md:items-center justify-between">
                 <h1 className="text-2xl font-bold">My Tasks</h1>
 

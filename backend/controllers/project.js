@@ -204,6 +204,93 @@ const toggleArchiveProject = async (req, res) => {
         res.status(500).json({ message: "Failed to update project" });
     }
 };
+const updateProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const { title, description, status, tags, startDate, dueDate } = req.body;
+
+        const project = await Project.findById(projectId);
+
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        // 🔒 Permission check (member only)
+        const isMember = project.members.some(
+            (member) => member.user.toString() === req.user._id.toString()
+        );
+
+        if (!isMember) {
+            return res.status(403).json({
+                message: "You are not allowed to update this project",
+            });
+        }
+
+        if (title !== undefined) project.title = title;
+        if (description !== undefined) project.description = description;
+        if (status !== undefined) project.status = status;
+        if (startDate !== undefined) project.startDate = startDate;
+        if (dueDate !== undefined) project.dueDate = dueDate;
+
+        if (tags !== undefined) {
+            project.tags = Array.isArray(tags)
+                ? tags
+                : tags.split(",").map(tag => tag.trim());
+        }
+
+        await project.save();
+
+        res.status(200).json({
+            message: "Project updated successfully",
+            project,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to update project" });
+    }
+};
+const deleteProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        const project = await Project.findById(projectId);
+
+        if (!project) {
+            return res.status(404).json({ message: "Project not found" });
+        }
+
+        // 🔒 Permission check (only creator / owner)
+        if (project.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({
+                message: "You are not allowed to delete this project",
+            });
+        }
+
+        // 🧹 Delete all tasks under this project
+        await Task.deleteMany({ project: projectId });
+
+        // 🧹 Remove project from workspace
+        await Workspace.findByIdAndUpdate(project.workspace, {
+            $pull: { projects: projectId },
+        });
+
+        // 🧹 Optional: remove notifications
+        await Notification.deleteMany({
+            targetType: "project",
+            targetId: projectId,
+        });
+
+        // ❌ Delete project itself
+        await Project.findByIdAndDelete(projectId);
+
+        res.status(200).json({
+            message: "Project deleted permanently",
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to delete project" });
+    }
+};
 
 
-export { createProject, getProjectDetails, getProjectTasks, archiveProject, toggleArchiveProject };
+export { createProject, getProjectDetails, getProjectTasks, archiveProject, toggleArchiveProject, updateProject, deleteProject };

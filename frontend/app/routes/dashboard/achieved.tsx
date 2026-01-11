@@ -34,7 +34,7 @@ const Achieved = () => {
 
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 pt-5">
             {/* ================= ARCHIVED TASKS ================= */}
             <Card>
                 <CardHeader>
