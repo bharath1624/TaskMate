@@ -40,6 +40,11 @@ export const Header = ({
         onWorkspaceSelected(workspace);
         navigate(`/dashboard?workspaceId=${workspace._id}`);
     };
+    const handleLogout = async () => {
+        await logout();
+        navigate("/");
+    };
+
     return (
         <div className="bg-background sticky top-0 z-40 border-b">
             <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
@@ -124,7 +129,9 @@ export const Header = ({
                                 <Link to="/user/profile">Profile</Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={logout}>Log Out</DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleLogout}>
+                                Log Out
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

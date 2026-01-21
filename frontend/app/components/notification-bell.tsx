@@ -23,7 +23,7 @@ export const NotificationBell = ({ userId }: { userId: string }) => {
             },
         })
             .then(res => res.json())
-            .then(data => setNotifications(data))
+            .then(data => setNotifications(Array.isArray(data) ? data : []))
             .catch(() => { });
     }, []);
 
@@ -43,7 +43,7 @@ export const NotificationBell = ({ userId }: { userId: string }) => {
                 },
             })
                 .then(res => res.json())
-                .then(data => setNotifications(data));
+                .then(data => setNotifications(Array.isArray(data) ? data : []))
         };
 
         socket.on("connect", handleConnect);

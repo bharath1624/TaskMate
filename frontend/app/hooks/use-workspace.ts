@@ -1,5 +1,6 @@
 import type { WorkspaceForm } from "@/components/workspace/create-workspace";
 import { deleteData, fetchData, patchData, postData, updateData } from "@/lib/fetch-util";
+import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
@@ -11,23 +12,32 @@ export const useCreateWorkspace = () => {
 };
 
 export const useGetWorkspacesQuery = () => {
+    const { isAuthenticated } = useAuth();
+
     return useQuery<Workspace[]>({
         queryKey: ["workspaces"],
         queryFn: async () => fetchData<Workspace[]>("/workspaces"),
+        enabled: isAuthenticated, // 🔥 FIX-2
     });
 };
 
 export const useGetWorkspaceQuery = (workspaceId: string) => {
+    const { isAuthenticated } = useAuth();
+
     return useQuery({
         queryKey: ["workspace", workspaceId],
         queryFn: async () => fetchData(`/workspaces/${workspaceId}/projects`),
+        enabled: !!workspaceId && isAuthenticated, // 🔥
     });
 };
+
 
 export const useGetWorkspaceStatsQuery = (
     workspaceId: string | null
 ) => {
+    const { isAuthenticated } = useAuth();
     return useQuery({
+
         queryKey: ["workspace", workspaceId, "stats"],
         queryFn: async () => {
             if (!workspaceId) {
@@ -35,28 +45,35 @@ export const useGetWorkspaceStatsQuery = (
             }
             return fetchData(`/workspaces/${workspaceId}/stats`);
         },
-        enabled: !!workspaceId, // 🔥 KEY FIX
+        enabled: !!workspaceId && isAuthenticated, // 🔥 FIX-2
+        // 🔥 KEY FIX
     });
 };
 
 export const useGetWorkspaceDetailsQuery = (workspaceId: string) => {
+    const { isAuthenticated } = useAuth();
+
     return useQuery<Workspace>({
         queryKey: ["workspace", workspaceId, "details"],
         queryFn: async () =>
             fetchData<Workspace>(`/workspaces/${workspaceId}`),
-        enabled: !!workspaceId,
+        enabled: !!workspaceId && isAuthenticated, // 🔥
     });
 };
 
 
+
 export const useGetArchivedDataQuery = (workspaceId: string) => {
+    const { isAuthenticated } = useAuth();
+
     return useQuery({
         queryKey: ["archived", workspaceId],
         queryFn: () =>
             fetchData(`/workspaces/${workspaceId}/archived`),
-        enabled: !!workspaceId,
+        enabled: !!workspaceId && isAuthenticated, // 🔥
     });
 };
+
 
 export const useInviteMemberMutation = () => {
     return useMutation({

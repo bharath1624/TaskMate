@@ -1,6 +1,6 @@
 import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
-import { CheckCircle2, ChevronsLeft, ChevronsRight, LayoutDashboard, ListCheck, LogOut, Settings, Users, Wrench } from "lucide-react";
+import { CheckCircle2, ChevronsLeft, ChevronsRight, Layers, LayoutDashboard, ListCheck, LogOut, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "../ui/button";
@@ -60,14 +60,14 @@ export const SidebarComponent = ({
                 <Link to="/dashboard" className="flex items-center">
                     {!isCollapsed && (
                         <div className="flex items-center gap-2">
-                            <Wrench className="size-6 text-blue-600" />
+                            <Layers className="size-6 text-blue-600" />
                             <span className="font-semibold text-lg hidden md:block">
                                 TaskMate
                             </span>
                         </div>
                     )}
 
-                    {isCollapsed && <Wrench className="size-6 text-blue-600" />}
+                    {isCollapsed && <Layers className="size-6 text-blue-600" />}
                 </Link>
 
                 <Button

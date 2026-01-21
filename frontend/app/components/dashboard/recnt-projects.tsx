@@ -62,9 +62,15 @@ export const RecentProjects = ({ data }: { data: Project[] }) => {
                 {data.length > 0 && (
                     <Link
                         to={`/workspaces/${workspaceId}`}
-                        className="block text-center text-sm font-semibold tracking-tight text-primary hover:underline pt-3"
+                        className="
+      block text-center text-l font-medium
+      text-muted-foreground
+      hover:text-primary
+      transition
+      pt-3
+    "
                     >
-                        View all projects →
+                        View all projects
                     </Link>
                 )}
             </CardContent>

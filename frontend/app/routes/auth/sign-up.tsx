@@ -63,7 +63,7 @@ const SignUp = () => {
                 <CardHeader className="text-center mb-5">
                     <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
                     <CardDescription className="text-sm text-muted-foreground">
-                        create account to continue
+                        To continue
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

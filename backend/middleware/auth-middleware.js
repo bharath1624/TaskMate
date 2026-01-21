@@ -23,11 +23,17 @@ const authMiddleware = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
-        console.log(error);
-        res.status(500).json({
-            message: "Internal server error",
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({
+                message: "Token expired",
+            });
+        }
+
+        return res.status(401).json({
+            message: "Unauthorized",
         });
     }
+
 };
 
 export default authMiddleware;

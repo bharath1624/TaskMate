@@ -68,6 +68,9 @@ export const StatisticsCharts = ({
     const filteredTaskTrendsData = normalizedTaskTrendsData.filter(
         d => d.completed + d.inProgress + d.todo > 0
     );
+    const hasTaskActivity = taskTrendsData.some(
+        d => d.completed + d.inProgress + d.todo > 0
+    );
 
     return (
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -81,59 +84,51 @@ export const StatisticsCharts = ({
                 </CardHeader>
                 <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
                     <div className="min-w-[350px]">
-                        <ChartContainer
-                            className="h-[360px]"
-                            config={{
-                                completed: { color: "#10b981" },
-                                inProgress: { color: "#3b82f6" },
-                                todo: { color: "#6b7280" },
-                            }}
-                        >
-                            <BarChart
-                                data={filteredTaskTrendsData}
-
-                                layout="vertical"
-                                barGap={0}          // 🔥 NO space between bars of same day
-                                barCategoryGap={8} // space between different days
+                        {hasTaskActivity ? (
+                            <ChartContainer
+                                className="h-[360px]"
+                                config={{
+                                    completed: { color: "#10b981" },
+                                    inProgress: { color: "#3b82f6" },
+                                    todo: { color: "#6b7280" },
+                                }}
                             >
-                                <YAxis
-                                    dataKey="name"
-                                    type="category"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    fontSize={12}
-                                    padding={{ top: 0, bottom: 0 }} // 🔥 THIS FIXES THE OFFSET
-                                />
-                                <XAxis
-                                    type="number"
-                                    allowDecimals={false}
-                                    domain={[0, "dataMax + 1"]}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                <ChartTooltip content={<ChartTooltipContent />} />
-                                <ChartLegend content={<ChartLegendContent />} />
-                                <Bar
-                                    dataKey="completed"
-                                    fill="#10b981"
-                                    barSize={18}
-                                    radius={[0, 4, 4, 0]}
-                                />
-                                <Bar
-                                    dataKey="inProgress"
-                                    fill="#3b82f6"
-                                    barSize={18}
-                                    radius={[0, 4, 4, 0]}
-                                />
-                                <Bar
-                                    dataKey="todo"
-                                    fill="#6b7280"
-                                    barSize={18}
-                                    radius={[0, 4, 4, 0]}
-                                />
-                            </BarChart>
-                        </ChartContainer>
+                                <BarChart
+                                    data={taskTrendsData}
+                                    layout="vertical"
+                                    barGap={0}
+                                    barCategoryGap={8}
+                                >
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        fontSize={12}
+                                        padding={{ top: 0, bottom: 0 }}
+                                    />
+                                    <XAxis
+                                        type="number"
+                                        allowDecimals={false}
+                                        domain={[0, "dataMax + 1"]}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                    <ChartLegend content={<ChartLegendContent />} />
+
+                                    <Bar dataKey="completed" fill="#10b981" barSize={18} radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="inProgress" fill="#3b82f6" barSize={18} radius={[0, 4, 4, 0]} />
+                                    <Bar dataKey="todo" fill="#6b7280" barSize={18} radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ChartContainer>
+                        ) : (
+                            <div className="h-[360px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                                <ChartLine className="size-8 opacity-40" />
+                                <p className="font-medium">No task activity yet</p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
 
+    // 1️⃣ Initial auth check
     useEffect(() => {
         const checkAuth = async () => {
             setIsLoading(true);
@@ -44,7 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const storedUser = localStorage.getItem("user");
 
                 if (storedUser) {
-                    setUser(normalizeUser(JSON.parse(storedUser))); // ✅ HERE
+                    setUser(normalizeUser(JSON.parse(storedUser)));
                     setIsAuthenticated(true);
                 } else {
                     setUser(null);
@@ -53,8 +54,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         navigate("/sign-in");
                     }
                 }
-            } catch (error) {
-                console.error("Auth check failed:", error);
             } finally {
                 setIsLoading(false);
             }
@@ -63,15 +62,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         checkAuth();
     }, []);
 
-
+    // 2️⃣ FORCED logout ONLY (401 / token expired)
     useEffect(() => {
-        const handleLogout = () => {
-            logout();
-            navigate("/sign-in");
+        const handleForceLogout = async () => {
+            await logout();
+            navigate("/sign-in", { replace: true });
         };
-        window.addEventListener("force-logout", handleLogout);
-        return () => window.removeEventListener("force-logout", handleLogout);
+
+        window.addEventListener("force-logout", handleForceLogout);
+        return () =>
+            window.removeEventListener("force-logout", handleForceLogout);
     }, []);
+
+    // 3️⃣ User update listener (OK)
     useEffect(() => {
         const handleUserUpdate = () => {
             const storedUser = localStorage.getItem("user");
@@ -81,7 +84,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
 
         window.addEventListener("user-updated", handleUserUpdate);
-        return () => window.removeEventListener("user-updated", handleUserUpdate);
+        return () =>
+            window.removeEventListener("user-updated", handleUserUpdate);
     }, []);
 
     const login = async (data: any) => {
