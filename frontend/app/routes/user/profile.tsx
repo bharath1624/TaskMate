@@ -56,7 +56,6 @@ const profileSchema = z.object({
     profilePicture: z.string().optional(), // only for preview
 });
 
-
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export type ProfileFormData = z.infer<typeof profileSchema>;
@@ -176,9 +175,8 @@ const Profile = () => {
     console.log("BACKEND_URL =", BACKEND_URL);
 
     return (
-        <div className="space-y-8">
-            <div className="px-4 md:px-0">
-                <BackButton />
+        <div className="w-full max-w-7xl space-y-8 px-4 md:px-10 lg:px-12">
+            <div>
                 <h3 className="text-lg font-medium">Profile Information</h3>
                 <p className="text-sm text-muted-foreground">
                     Manage your account settings and preferences.
@@ -187,12 +185,12 @@ const Profile = () => {
 
             <Separator />
 
-            <Card>
-                <CardHeader>
+            <Card className="w-full">
+                <CardHeader className="px-8">
                     <CardTitle>Personal Information</CardTitle>
                     <CardDescription>Update your personal details.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-8 py-6">
                     <Form {...profileForm}>
                         <form
                             onSubmit={profileForm.handleSubmit(handleProfileFormSubmit)}

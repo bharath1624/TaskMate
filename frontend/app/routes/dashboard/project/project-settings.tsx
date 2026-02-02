@@ -1,4 +1,3 @@
-import { BackButton } from "@/components/back-button";
 import { Loader } from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -11,12 +10,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { UseProjectQuery } from "@/hooks/use-project";
-import { useState } from "react";
 import {
     AlertDialog,
-    AlertDialogTrigger,
     AlertDialogContent,
     AlertDialogHeader,
     AlertDialogTitle,
@@ -24,198 +19,281 @@ import {
     AlertDialogFooter,
     AlertDialogCancel,
     AlertDialogAction,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UseDeleteProject, UseUpdateProject } from "@/hooks/use-project";
+import { UseProjectQuery, UseUpdateProject, UseDeleteProject, UseToggleArchiveProject } from "@/hooks/use-project";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Archive, ArrowLeft, CalendarIcon, Check, RotateCcw } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { useAuth } from "@/provider/auth-context";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+const getImageUrl = (path: string | undefined | null) => {
+    if (!path) return undefined;
+    if (path.startsWith("http")) return path;
+    const BASE = "http://localhost:5000";
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BASE}${cleanPath}`;
+};
 
 const ProjectSettings = () => {
     const navigate = useNavigate();
-    const { projectId, workspaceId } = useParams<{
-        projectId: string;
-        workspaceId: string;
-    }>();
-    if (!projectId) {
-        navigate(`/workspaces/${workspaceId}`, { replace: true });
-        return null;
-    }
+    const { user } = useAuth();
+    const { projectId, workspaceId } = useParams<{ projectId: string; workspaceId: string }>();
+
+    // 1. HOOKS
+    // ✅ FIX: Cast result to include 'canEdit'
     const { data, isLoading } = UseProjectQuery(projectId!) as any;
-
-    if (isLoading) return <Loader />;
-
-    const project = data.project;
-
-    const [title, setTitle] = useState(project.title);
-    const [description, setDescription] = useState(project.description ?? "");
-    const [status, setStatus] = useState(project.status ?? "Planning");
-    const [tags, setTags] = useState(project.tags?.join(", ") ?? "");
-    const { mutate: deleteProject, isPending } = UseDeleteProject();
+    const { mutate: deleteProject, isPending: isDeleting } = UseDeleteProject();
     const { mutate: updateProject, isPending: isUpdating } = UseUpdateProject();
+    const { mutate: toggleArchive, isPending: isArchiving } = UseToggleArchiveProject();
+
+    // 2. STATE
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [status, setStatus] = useState("Planning");
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+    const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+    const [members, setMembers] = useState<string[]>([]);
+
+    // 3. EFFECT: Load Data
+    useEffect(() => {
+        if (data?.project) {
+            const p = data.project;
+            setTitle(p.title || "");
+            setDescription(p.description || "");
+            setStatus(p.status || "Planning");
+            setStartDate(p.startDate ? new Date(p.startDate) : undefined);
+            setDueDate(p.dueDate ? new Date(p.dueDate) : undefined);
+
+            const memberIds = p.members?.map((m: any) => m.user?._id || m.user) || [];
+            setMembers(memberIds);
+        }
+    }, [data]);
+
+    if (isLoading || isDeleting) return <Loader />;
+    if (!data?.project) return <div className="p-8">Project not found</div>;
+
+    const { project, workspaceMembers = [], canEdit } = data;
+
+    // 4. ✅ PERMISSION CHECK: Use the backend flag directly
+    if (!canEdit) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
+                <h2 className="text-xl font-bold text-destructive">Access Denied</h2>
+                <p className="text-muted-foreground">You do not have permission to view these settings.</p>
+                <Button variant="outline" onClick={() => navigate(-1)}>Go Back</Button>
+            </div>
+        );
+    }
+
+    // 5. DIRTY CHECK
     const isDirty =
         title !== project.title ||
-        description !== project.description ||
-        status !== project.status ||
-        tags !== project.tags?.join(", ");
+        description !== (project.description || "") ||
+        status !== (project.status || "Planning") ||
+        startDate?.toISOString() !== (project.startDate ? new Date(project.startDate).toISOString() : undefined) ||
+        dueDate?.toISOString() !== (project.dueDate ? new Date(project.dueDate).toISOString() : undefined) ||
+        JSON.stringify(members.sort()) !== JSON.stringify(project.members.map((m: any) => m.user?._id || m.user).sort());
+
+    const isMemberChecked = (userId: string) => members.includes(userId);
+
+    const toggleMember = (userId: string) => {
+        if (members.includes(userId)) {
+            setMembers(members.filter(id => id !== userId));
+        } else {
+            setMembers([...members, userId]);
+        }
+    };
+
+    // 6. HANDLERS
+    const handleUpdate = () => {
+        updateProject(
+            {
+                projectId: projectId!,
+                payload: {
+                    title,
+                    description,
+                    status,
+                    startDate: startDate?.toISOString(),
+                    dueDate: dueDate?.toISOString(),
+                    members
+                }
+            },
+            {
+                onSuccess: () => toast.success("Project updated successfully"),
+                onError: () => toast.error("Failed to update project"),
+            }
+        );
+    };
+
+    const handleDelete = () => {
+        deleteProject({ projectId: projectId! }, {
+            onSuccess: () => {
+                toast.success("Project deleted permanently");
+                navigate(`/workspaces/${workspaceId}`, { replace: true });
+            },
+            //onError: (err: any) => toast.error(err.response?.data?.message || "Delete failed"),
+        });
+    };
+    const handleToggleArchive = () => {
+        toggleArchive({ projectId: projectId! });
+    };
 
     return (
-        <div className="relative min-h-screen">
-            {/* ⬅️ BACK BUTTON — TOP LEFT */}
-            <div className="absolute top-4 left-4 z-10">
-                <BackButton />
-            </div>
-            <div className="flex justify-center pt-16">
-                <div className="w-full max-w-3xl space-y-8 px-4">
-                    {/* Project Settings */}
-                    <Card>
+        <div className="relative min-h-screen bg-gray-50/50">
+            <div className="flex justify-center w-full pt-16 pb-20">
+                <div className="w-full max-w-5xl space-y-8 px-4 sm:px-6">
+                    <Card className="shadow-sm border-gray-200">
                         <CardHeader>
-                            <h2 className="text-xl font-semibold">Project Settings</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Update your project details or delete the project.
-                            </p>
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-2xl font-bold tracking-tight">Project Settings</h2>
+                                <p className="text-sm text-muted-foreground">Manage project details, status, timeline, and team members.</p>
+                            </div>
                         </CardHeader>
 
-                        <CardContent className="space-y-5">
-                            <div>
-                                <label className="text-sm font-medium">Project Title</label>
-                                <Input
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium">Description</label>
-                                <Textarea
-                                    rows={4}
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium">Status</label>
-                                <Select value={status} onValueChange={setStatus}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Planning">Planning</SelectItem>
-                                        <SelectItem value="In Progress">In Progress</SelectItem>
-                                        <SelectItem value="On Hold">On Hold</SelectItem>
-                                        <SelectItem value="Completed">Completed</SelectItem>
-                                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium">Tags</label>
-                                <Input
-                                    placeholder="coding, backend, web"
-                                    value={tags}
-                                    onChange={(e) => setTags(e.target.value)}
-                                />
-                                <div className="flex gap-2 mt-2 flex-wrap">
-                                    {tags
-                                        .split(",")
-                                        .map((tag: string) => tag.trim())
-                                        .filter(Boolean)
-                                        .map((tag: string) => (
-                                            <Badge key={tag} variant="secondary">
-                                                {tag}
-                                            </Badge>
-                                        ))}
+                        <CardContent className="space-y-8 pt-6">
+                            {/* Title & Description */}
+                            <div className="space-y-8">
+                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
+                                    <label className="text-sm font-semibold text-gray-700">Project Title</label>
+                                    <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canEdit} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-gray-700">Description</label>
+                                    <Textarea className="min-h-[120px] resize-y" value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end">
-                                <Button
-                                    disabled={!isDirty || isUpdating}
-                                    onClick={() =>
-                                        updateProject(
-                                            {
-                                                projectId: projectId!,
-                                                payload: {
-                                                    title,
-                                                    description,
-                                                    status,
-                                                    tags: tags
-                                                        .split(",")
-                                                        .map((tag: string) => tag.trim())
-                                                        .filter(Boolean),
-                                                },
-                                            },
-                                            {
-                                                onSuccess: () => {
-                                                    toast.success("Project updated successfully");
-                                                },
-                                                onError: () => {
-                                                    toast.error("Failed to update project");
-                                                },
-                                            }
-                                        )
-                                    }
-                                >
+                            {/* Status & Dates */}
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-[60px_1fr] items-center gap-4">
+                                    <label className="text-sm font-semibold text-gray-700">Status</label>
+                                    <Select value={status} onValueChange={setStatus} disabled={!canEdit}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Planning">Planning</SelectItem>
+                                            <SelectItem value="In Progress">In Progress</SelectItem>
+                                            <SelectItem value="On Hold">On Hold</SelectItem>
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-semibold text-gray-700">Start Date</label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={!canEdit}>
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {startDate ? format(startDate, "PPP") : "Pick a date"}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-semibold text-gray-700">Due Date</label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={!canEdit}>
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Members Selection */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-semibold text-gray-700">Project Members</label>
+                                <div className={`border rounded-lg p-1 bg-gray-50/50 ${!canEdit ? "opacity-60 pointer-events-none" : ""}`}>
+                                    <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+                                        {workspaceMembers.map((member: any) => {
+                                            if (!member?.user) return null;
+                                            const userId = member.user._id;
+                                            const isSelected = isMemberChecked(userId);
+                                            return (
+                                                <div
+                                                    key={userId}
+                                                    className={cn("flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors border", isSelected ? "bg-white border-primary/20 shadow-sm" : "border-transparent hover:bg-gray-100")}
+                                                    onClick={() => toggleMember(userId)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-8 w-8 border">
+                                                            <AvatarImage src={getImageUrl(member.user.profilePicture)} />
+                                                            <AvatarFallback>{member.user.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-medium leading-none">{member.user.name}</p>
+                                                            <p className="text-xs text-muted-foreground capitalize mt-1">{member.role}</p>
+                                                        </div>
+                                                    </div>
+                                                    {isSelected && <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center"><Check className="h-3 w-3 text-white" /></div>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex justify-end">
+                                <Button size="lg" disabled={!isDirty || isUpdating} onClick={handleUpdate}>
                                     {isUpdating ? "Saving..." : "Save Changes"}
                                 </Button>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Danger Zone */}
-                    <Card className="border-red-200 mb-5">
-                        <CardHeader>
-                            <h3 className="text-red-600 font-semibold">Danger Zone</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Irreversible action
-                            </p>
+                    <Card className="shadow-sm border-gray-200">
+                        <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-semibold text-gray-800">Archive Project</h3>
+                                    <p className="text-sm text-muted-foreground">{project.isArchived ? "This project is currently archived." : "Archiving removes this project from active views."}</p>
+                                </div>
+                            </div>
                         </CardHeader>
-
                         <CardContent>
-                            <div className="flex items-center justify-between w-full">
-                                {/* Left side text (or empty spacer) */}
-                                <p className="text-sm text-muted-foreground">
-                                </p>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive">
-                                            Delete Project
-                                        </Button>
-                                    </AlertDialogTrigger>
+                            <div className="flex items-center justify-end">
+                                <Button variant={project.isArchived ? "default" : "secondary"} onClick={handleToggleArchive} disabled={isArchiving || !canEdit} className="min-w-[140px]">
+                                    {isArchiving ? <Loader className="h-4 w-4 animate-spin" /> : project.isArchived ? <><RotateCcw className="mr-2 h-4 w-4" /> Restore Project</> : <><Archive className="mr-2 h-4 w-4" /> Archive Project</>}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
 
+                    <Card className="border-red-100 shadow-sm bg-red-50/10">
+                        <CardHeader className="pb-4">
+                            <h3 className="text-lg font-semibold text-red-600">Danger Zone</h3>
+                            <p className="text-sm text-muted-foreground">Irreversible actions for this project.</p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-end">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild><Button variant="destructive">Delete Project</Button></AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This action cannot be undone. This will permanently
-                                                delete your project and all its data.
-                                            </AlertDialogDescription>
+                                            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+                                            <AlertDialogDescription>This action cannot be undone. This will permanently delete <span className="font-semibold text-foreground">"{title}"</span>.</AlertDialogDescription>
                                         </AlertDialogHeader>
-
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                disabled={isPending}
-                                                onClick={() =>
-                                                    deleteProject(
-                                                        { projectId: projectId! },
-                                                        {
-                                                            onSuccess: () => {
-                                                                toast.success("Project deleted successfully");
-                                                                navigate(
-                                                                    `/workspaces/${workspaceId}`,
-                                                                    { replace: true }
-                                                                );
-                                                            },
-                                                            onError: () => {
-                                                                toast.error("Failed to delete project");
-                                                            },
-                                                        }
-                                                    )
-                                                }
-                                            >
-                                                {isPending ? "Deleting..." : "Confirm"}
-                                            </AlertDialogAction>
+                                            <AlertDialogAction type="button" className="bg-red-600 hover:bg-red-700" disabled={isDeleting} onClick={handleDelete}>{isDeleting ? "Deleting..." : "Confirm Delete"}</AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>

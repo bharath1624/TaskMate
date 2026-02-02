@@ -4,23 +4,21 @@ import { Checkbox } from "../ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import {
-    useAddSubTaskMutation,
-    useUpdateSubTaskMutation,
-} from "@/hooks/use-task";
+import { useAddSubTaskMutation, useUpdateSubTaskMutation } from "@/hooks/use-task";
 import { toast } from "sonner";
 
 export const SubTasksDetails = ({
     subTasks,
     taskId,
+    canEdit, // 🔒 Received Prop
 }: {
     subTasks: Subtask[];
     taskId: string;
+    canEdit: boolean;
 }) => {
     const [newSubTask, setNewSubTask] = useState("");
     const { mutate: addSubTask, isPending } = useAddSubTaskMutation();
-    const { mutate: updateSubTask, isPending: isUpdating } =
-        useUpdateSubTaskMutation();
+    const { mutate: updateSubTask, isPending: isUpdating } = useUpdateSubTaskMutation();
 
     const handleToggleTask = (subTaskId: string, checked: boolean) => {
         updateSubTask(
@@ -31,7 +29,6 @@ export const SubTasksDetails = ({
                 },
                 onError: (error: any) => {
                     const errMessage = error.response.data.message;
-                    console.log(error);
                     toast.error(errMessage);
                 },
             }
@@ -48,61 +45,69 @@ export const SubTasksDetails = ({
                 },
                 onError: (error: any) => {
                     const errMessage = error.response.data.message;
-                    console.log(error);
                     toast.error(errMessage);
                 },
             }
         );
     };
-
     return (
         <div className="mb-6">
-            <h3 className="text-sm font-medium">
-                Sub Tasks
-            </h3>
-
+            <h3 className="text-sm font-medium mb-2">Sub Tasks</h3>
             <div className="space-y-2 mb-4">
-                {subTasks.length > 0 ? (
-                    subTasks.map((subTask) => (
-                        <div key={subTask._id} className="flex items-center space-x-2">
-                            <Checkbox
-                                id={subTask._id}
-                                checked={subTask.completed}
-                                onCheckedChange={(checked) =>
-                                    handleToggleTask(subTask._id, !!checked)
-                                }
-                                disabled={isUpdating}
-                            />
+                <div className="space-y-2 mb-4">
+                    {subTasks.length > 0 ? (
+                        subTasks.map((subTask) => (
+                            <div key={subTask._id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={subTask._id}
+                                    checked={subTask.completed}
+                                    onCheckedChange={(checked) =>
+                                        handleToggleTask(subTask._id, !!checked)
+                                    }
+                                    disabled={isUpdating}
+                                />
 
-                            <label
-                                className={cn(
-                                    "text-sm",
-                                    subTask.completed ? "line-through text-muted-foreground" : ""
-                                )}
-                            >
-                                {subTask.title}
-                            </label>
-                        </div>
-                    ))
-                ) : null}
+                                <label
+                                    className={cn(
+                                        "text-sm",
+                                        subTask.completed
+                                            ? "line-through text-muted-foreground"
+                                            : ""
+                                    )}
+                                >
+                                    {subTask.title}
+                                </label>
+                            </div>
+                        ))
+                    ) : (
+                        !canEdit && (
+                            <p className="text-sm text-muted-foreground mt-3">
+                                No sub tasks have been added yet
+                            </p>
+                        )
+                    )}
+                </div>
             </div>
 
-            <div className="flex ">
-                <Input
-                    placeholder="Add a sub task"
-                    value={newSubTask}
-                    onChange={(e) => setNewSubTask(e.target.value)}
-                    className="mr-1"
-                    disabled={isPending}
-                />
+            {/* 🔒 Only Admins/Owners can ADD subtasks */}
+            {canEdit && (
+                <div className="flex">
+                    <Input
+                        placeholder="Add a sub task"
+                        value={newSubTask}
+                        onChange={(e) => setNewSubTask(e.target.value)}
+                        className="mr-1"
+                        disabled={isPending}
+                    />
 
-                <Button
-                    onClick={handleAddSubTask}
-                    disabled={isPending || newSubTask.length === 0}
-                >
-                    Add
-                </Button>
-            </div>
+                    <Button
+                        onClick={handleAddSubTask}
+                        disabled={isPending || newSubTask.length === 0}
+                    >
+                        Add
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };

@@ -43,12 +43,16 @@ const SignUp = () => {
             onSuccess: () => {
                 toast.success("Email Verification Required", {
                     description:
-                        "Please check your email for a verification link. If you don't see it, please check your spam folder.",
+                        "Please verify your email, then sign in to continue.",
                 });
+
+                // 🔐 IMPORTANT: DO NOT remove inviteToken here
+                // It will be used after login
 
                 form.reset();
                 navigate("/sign-in");
             },
+
             onError: (error: any) => {
                 const errorMessage =
                     error.response?.data?.message || "An error occurred";
@@ -61,7 +65,7 @@ const SignUp = () => {
         <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
             <Card className="max-w-md w-full shadow-xl">
                 <CardHeader className="text-center mb-5">
-                    <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+                    <CardTitle className="text-2xl font-bold  text-blue-600">Create an account</CardTitle>
                     <CardDescription className="text-sm text-muted-foreground">
                         To continue
                     </CardDescription>
@@ -134,7 +138,7 @@ const SignUp = () => {
                                 )}
                             />
 
-                            <Button type="submit" className="w-full" disabled={isPending}>
+                            <Button type="submit" className="w-full  bg-blue-600  hover:bg-blue-700  text-white" disabled={isPending}>
                                 {isPending ? "Signing up..." : "Sign up"}
                             </Button>
                         </form>
@@ -143,7 +147,13 @@ const SignUp = () => {
                     <CardFooter className="flex items-center justify-center mt-6">
                         <div className="flex items-center justify-center">
                             <p className="text-sm text-muted-foreground">
-                                Already have an account?<Link to="/sign-in">Sign in</Link>
+                                Already have an account?{" "}
+                                <Link
+                                    to="/sign-in"
+                                    className="font-medium text-foreground hover:underline"
+                                >
+                                    Sign in
+                                </Link>
                             </p>
                         </div>
                     </CardFooter>

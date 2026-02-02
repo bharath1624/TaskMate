@@ -41,30 +41,34 @@ const SignIn = () => {
     });
     const { mutate, isPending } = useLoginMutation();
 
-
     const handleOnSubmit = (values: SigninFormData) => {
         mutate(values, {
-            onSuccess: (data) => {
-                login(data);
-                console.log(data);
-                toast.success("Login successful");
+            onSuccess: async (data: any) => {
+                // 1. Save session (This triggers AuthProvider to handle invites)
+                await login(data);
+
+                toast.success("Welcome back!");
+
+                // 2. Simply navigate. AuthProvider will detect the inviteToken 
+                // in localStorage and redirect to the workspace automatically.
                 navigate("/dashboard");
             },
             onError: (error: any) => {
-                const errorMessage =
-                    error.response?.data?.message || "An error occurred";
-                console.log(error);
+                const errorMessage = error.response?.data?.message || "Login failed";
                 toast.error(errorMessage);
             },
         });
-    }
+    };
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-muted/40 p-4">
             <Card className="max-w-md w-full shadow-xl">
                 <CardHeader className="text-center mb-5">
-                    <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-blue-600">
+                        Welcome back
+                    </CardTitle>
                     <CardDescription className="text-sm text-muted-foreground">
-                        Sign in to your account to continue
+                        Sign in to your account
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -80,10 +84,7 @@ const SignIn = () => {
                                     <FormItem>
                                         <FormLabel>Email Address</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                type="email"
-                                                {...field}
-                                            />
+                                            <Input type="email" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -104,17 +105,14 @@ const SignIn = () => {
                                             </Link>
                                         </div>
                                         <FormControl>
-                                            <Input
-                                                type="password"
-                                                {...field}
-                                            />
+                                            <Input type="password" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
 
-                            <Button type="submit" className="w-full" disabled={isPending}>
+                            <Button type="submit" disabled={isPending} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                                 {isPending ? <Loader2 className="w-4 h-4 mr-2" /> : "Sign in"}
                             </Button>
                         </form>
@@ -123,7 +121,13 @@ const SignIn = () => {
                     <CardFooter className="flex items-center justify-center mt-6">
                         <div className="flex items-center justify-center">
                             <p className="text-sm text-muted-foreground">
-                                Don&apos;t have an account? <Link to="/sign-up">Sign up</Link>
+                                Don&apos;t have an account?{" "}
+                                <Link
+                                    to="/sign-up"
+                                    className="font-medium text-foreground hover:underline"
+                                >
+                                    Sign up
+                                </Link>
                             </p>
                         </div>
                     </CardFooter>

@@ -2,15 +2,14 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
     CheckSquare,
-    Calendar,
     Users,
     BarChart3,
     Bell,
-    Link2,
     Paperclip,
     Send,
     Lock,
     Layers,
+    ShieldCheck,
 } from "lucide-react";
 const Homepage = () => {
     const scrollToFeatures = () => {
@@ -93,7 +92,7 @@ const Homepage = () => {
                 {/* Right */}
                 <div className="relative">
                     <img
-                        src="/dashboard-preview.png"
+                        src="/dashboard-preview1.png"
                         alt="TaskMate dashboard"
                         className="rounded-2xl border shadow-xl"
                     />
@@ -170,9 +169,9 @@ const Homepage = () => {
                             desc: "Create, assign, and track tasks across projects.",
                         },
                         {
-                            icon: Calendar,
-                            title: "Smart Scheduling",
-                            desc: "Plan deadlines and milestones with an integrated calendar.",
+                            icon: ShieldCheck,
+                            title: "Access Control",
+                            desc: "Secure access with distinct permissions for every role.",
                         },
                         {
                             icon: Users,

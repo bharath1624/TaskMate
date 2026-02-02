@@ -2,8 +2,9 @@ import express from "express";
 import { validateRequest } from "zod-express-middleware";
 import { inviteMemberSchema, tokenSchema, workspaceSchema } from "../libs/validate-schema.js";
 import authMiddleware from "../middleware/auth-middleware.js";
-import { createWorkspace, getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats, getArchivedData, acceptInviteByToken, inviteUserToWorkspace, acceptGenerateInvite, updateWorkspace, transferWorkspaceOwnership, deleteWorkspace } from "../controllers/workspace.js";
+import { createWorkspace, getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats, getArchivedData, acceptInviteByToken, inviteUserToWorkspace, acceptGenerateInvite, updateWorkspace, transferWorkspaceOwnership, deleteWorkspace, removeMemberFromWorkspace } from "../controllers/workspace.js";
 import { z } from "zod";
+import optionalAuthMiddleware from "../middleware/optional-auth-middleware.js";
 
 const router = express.Router();
 
@@ -13,12 +14,14 @@ router.post(
     validateRequest({ body: workspaceSchema }),
     createWorkspace
 );
+router.get("/", authMiddleware, getWorkspaces);
 router.post(
     "/accept-invite-token",
-    authMiddleware,
+    optionalAuthMiddleware,
     validateRequest({ body: tokenSchema }),
     acceptInviteByToken
 );
+
 router.post(
     "/:workspaceId/invite-member",
     authMiddleware,
@@ -62,9 +65,12 @@ router.delete(
     }),
     deleteWorkspace
 );
-
-
-router.get("/", authMiddleware, getWorkspaces);
+router.delete(
+    "/:workspaceId/members/:memberId",
+    authMiddleware,
+    // (Optional) You can add z.object validation for params here if you want strict checking
+    removeMemberFromWorkspace
+);
 router.get("/:workspaceId", authMiddleware, getWorkspaceDetails);
 router.get("/:workspaceId/projects", authMiddleware, getWorkspaceProjects);
 router.get("/:workspaceId/stats", authMiddleware, getWorkspaceStats);

@@ -1,7 +1,7 @@
 import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
 import { Button } from "../ui/button";
-import { Bell, PlusCircle } from "lucide-react";
+import { IdCard, LogOut, PlusCircle, UserCircle } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,9 +12,10 @@ import {
     DropdownMenuGroup,
 } from "../ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
-import { Link, useLoaderData, useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
 import { NotificationBell } from "../notification-bell";
+import { useState } from "react";
 
 interface HeaderProps {
     workspaces?: Workspace[];
@@ -31,6 +32,7 @@ export const Header = ({
 }: HeaderProps) => {
     const navigate = useNavigate();
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+    const [open, setOpen] = useState(false);
 
     const { user, logout } = useAuth();
 
@@ -94,44 +96,91 @@ export const Header = ({
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
 
+                    <div className="flex items-center gap-4">
+                        {user && (
+                            <div
+                                className="
+            relative flex items-center justify-center
+            w-9 h-9 
+            bg-background
+            hover:bg-muted
+            transition-all duration-200
+            cursor-pointer
+        "
+                            >
+                                <NotificationBell userId={user._id} />
+                            </div>
+                        )}
 
-                    <div className="flex items-center gap-2">
-                        {user && <NotificationBell userId={user._id} />}
-
-                        {/* Avatar dropdown stays as-is */}
                     </div>
 
-
-                    <DropdownMenu>
+                    <DropdownMenu open={open} onOpenChange={setOpen}>
                         <DropdownMenuTrigger asChild>
-                            <button className="rounded-full border p-1 w-8 h-8">
-                                <Avatar className="w-8 h-8">
-                                    <AvatarImage
-                                        src={
-                                            user?.profilePicture?.startsWith("http")
-                                                ? user.profilePicture
-                                                : user?.profilePicture
-                                                    ? `${BACKEND_URL}${user.profilePicture}`
-                                                    : undefined
-                                        }
-                                    />
-                                    <AvatarFallback className="bg-primary text-primary-foreground">
-                                        {user?.name?.charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </button>
+                            <Avatar
+                                className="w-8 h-8 cursor-pointer border transition-all duration-200 hover:shadow-sm"
+                                onMouseEnter={() => setOpen(true)}
+                            >
+                                <AvatarImage
+                                    src={
+                                        user?.profilePicture?.startsWith("http")
+                                            ? user.profilePicture
+                                            : user?.profilePicture
+                                                ? `${BACKEND_URL}${user.profilePicture}`
+                                                : undefined
+                                    }
+                                />
+                                <AvatarFallback className="bg-primary text-primary-foreground">
+                                    {user?.name?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
                         </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            sideOffset={8}
+                            onMouseLeave={() => setOpen(false)}
+                            className="
+        w-35 rounded-lg border bg-background
+        shadow-lg p-1
+        animate-in fade-in zoom-in-95
+    "
+                        >
+                            {/* NAME (not clickable) */}
+                            <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-foreground">
+                                <IdCard className="w-4 h-4 text-muted-foreground" />
+                                <span>{user?.name}</span>
+                            </div>
 
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                                <Link to="/user/profile">Profile</Link>
+                            <DropdownMenuSeparator className="my-1" />
+
+                            {/* PROFILE */}
+                            <DropdownMenuItem
+                                asChild
+                                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-muted focus:bg-muted"
+                            >
+                                <Link to="/user/profile">
+                                    <UserCircle className="w-4 h-4 text-muted-foreground" />
+                                    <span>Profile</span>
+                                </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={handleLogout}>
-                                Log Out
+
+                            {/* LOGOUT */}
+                            <DropdownMenuItem
+                                onClick={handleLogout}
+                                className="
+        flex items-center gap-2
+        rounded-md px-3 py-2 text-sm
+        cursor-pointer
+        text-red-600
+        transition-colors
+        hover:bg-red-50 focus:bg-red-50
+    "
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span>Log out</span>
                             </DropdownMenuItem>
+
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

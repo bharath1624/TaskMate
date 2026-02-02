@@ -41,8 +41,7 @@ export const SidebarNav = ({
                 };
 
                 return (
-                    <Button
-                        key={el.href}
+                    <Button key={el.title}
                         variant={isActive ? "outline" : "ghost"}
                         className={cn(
                             "justify-start",

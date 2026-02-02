@@ -8,7 +8,7 @@ import {
     CardTitle,
 } from "./ui/card";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CalendarX, CheckCircle2, Circle } from "lucide-react";
 import { format } from "date-fns";
 
 export const UpcomingTasks = ({ data }: { data: Task[] }) => {
@@ -24,9 +24,10 @@ export const UpcomingTasks = ({ data }: { data: Task[] }) => {
 
             <CardContent className="space-y-4">
                 {data.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                        No upcoming tasks yet
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+                        <CalendarX className="w-8 h-8 mb-2 opacity-60" />
+                        <p className="text-sm font-medium">No upcoming tasks yet</p>
+                    </div>
                 ) : (
                     data.map((task) => (
                         <Link

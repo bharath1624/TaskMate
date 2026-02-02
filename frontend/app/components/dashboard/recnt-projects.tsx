@@ -8,6 +8,9 @@ import { Progress } from "../ui/progress";
 export const RecentProjects = ({ data }: { data: Project[] }) => {
     const [searchParams] = useSearchParams();
     const workspaceId = searchParams.get("workspaceId");
+    const activeProjects = data.filter(
+        (project) => !project.isArchived
+    );
 
     return (
         <Card className="lg:col-spa-2">
@@ -16,19 +19,19 @@ export const RecentProjects = ({ data }: { data: Project[] }) => {
             </CardHeader>
 
             <CardContent className="space-y-4">
-                {data.length === 0 ? (
+                {activeProjects.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
                         No Recent project yet
                     </p>
                 ) : (
-                    data.map((project) => {
-                        const projectProgress = getProjectProgress(project.tasks);
-
+                    activeProjects.map((project) => {
+                        const activeTasks = project.tasks.filter((t) => !t.isArchived);
+                        const projectProgress = getProjectProgress(activeTasks);
                         return (
                             <div key={project._id} className="border rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <Link
-                                        to={`/workspaces${workspaceId}/projects/${project._id}`}
+                                        to={`/workspaces/${workspaceId}/projects/${project._id}`}
                                     >
                                         <h3 className="font-medium hover:text-primary transition-colors">
                                             {project.title}
@@ -59,7 +62,7 @@ export const RecentProjects = ({ data }: { data: Project[] }) => {
                         );
                     })
                 )}
-                {data.length > 0 && (
+                {activeProjects.length > 0 && (
                     <Link
                         to={`/workspaces/${workspaceId}`}
                         className="

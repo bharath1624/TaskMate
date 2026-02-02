@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api-v1";
 
@@ -27,9 +27,8 @@ api.interceptors.response.use(
     }
 );
 
-const postData = async <T>(url: string, data: unknown): Promise<T> => {
-    const response = await api.post(url, data);
-
+const postData = async <T>(url: string, data: unknown, config?: AxiosRequestConfig): Promise<T> => {
+    const response = await api.post(url, data, config);
     return response.data;
 };
 

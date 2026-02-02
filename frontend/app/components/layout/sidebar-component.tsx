@@ -1,6 +1,15 @@
 import { useAuth } from "@/provider/auth-context";
 import type { Workspace } from "@/types";
-import { CheckCircle2, ChevronsLeft, ChevronsRight, Layers, LayoutDashboard, ListCheck, LogOut, Settings, Users } from "lucide-react";
+import {
+    CheckCircle2,
+    ChevronsLeft,
+    ChevronsRight,
+    Layers,
+    LayoutDashboard,
+    ListCheck,
+    Settings,
+    Users,
+} from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "../ui/button";
@@ -13,33 +22,54 @@ export const SidebarComponent = ({
 }: {
     currentWorkspace: Workspace | null;
 }) => {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // ✅ FIX: Robust Role Detection
+    // We convert both IDs to strings to ensure they match correctly.
+    const userId = user?._id?.toString();
+
+    const currentMember = currentWorkspace?.members?.find((m: any) => {
+        // Handle cases where m.user is populated (Object) or just an ID (String)
+        const memberId = m.user?._id ? m.user._id.toString() : m.user?.toString();
+        return memberId === userId;
+    });
+
+    const userRole = currentMember?.role || "member";
+
+    // Debugging: Uncomment if issues persist to see what role is being detected
+    // console.log("Detected Role:", userRole);
+
     const navItems = [
         {
             title: "Dashboard",
             href: "/dashboard",
             icon: LayoutDashboard,
+            allowedRoles: ["owner", "admin", "member"],
         },
         {
             title: "Workspaces",
             href: "/workspaces",
             icon: Users,
+            allowedRoles: ["owner", "admin", "member"],
         },
         {
             title: "My Tasks",
             href: "/my-tasks",
             icon: ListCheck,
+            allowedRoles: ["owner", "admin", "member"],
         },
         {
             title: "Members",
             href: `/members`,
             icon: Users,
+            allowedRoles: ["owner", "admin", "member"],
         },
         {
-            title: "Archieved",
+            title: "Archived",
             href: `/achieved`,
             icon: CheckCircle2,
+            allowedRoles: ["owner", "admin"], // ✅ Owner & Admin Only
         },
         {
             title: "Settings",
@@ -47,13 +77,20 @@ export const SidebarComponent = ({
                 ? `/workspaces/${currentWorkspace._id}/settings`
                 : "/workspaces",
             icon: Settings,
+            allowedRoles: ["owner"], // ✅ Owner Only
         },
     ];
 
+    // Filter Items based on Role
+    const visibleItems = navItems.filter((item) =>
+        item.allowedRoles.includes(userRole)
+    );
+
     return (
         <div
-            className={cn("flex flex-col border-r bg-sidebar transition-all duration-300",
-                isCollapsed ? "w-16 md:w[80px]" : "w-16 md:w-60"
+            className={cn(
+                "flex flex-col border-r bg-sidebar transition-all duration-300",
+                isCollapsed ? "w-16 md:w-20" : "w-16 md:w-60"
             )}
         >
             <div className="flex h-14 items-center border-b px-4 mb-4">
@@ -61,7 +98,7 @@ export const SidebarComponent = ({
                     {!isCollapsed && (
                         <div className="flex items-center gap-2">
                             <Layers className="size-6 text-blue-600" />
-                            <span className="font-semibold text-lg hidden md:block">
+                            <span className="font-semibold text-xl hidden md:block">
                                 TaskMate
                             </span>
                         </div>
@@ -85,7 +122,7 @@ export const SidebarComponent = ({
             </div>
             <ScrollArea className="flex-1 px-3 py-2">
                 <SidebarNav
-                    items={navItems}
+                    items={visibleItems}
                     isCollapsed={isCollapsed}
                     className={cn(isCollapsed && "items-center space-y-2")}
                     currentWorkspace={currentWorkspace}

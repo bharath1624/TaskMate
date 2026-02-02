@@ -1,7 +1,7 @@
 export const priorityStyles: Record<string, string> = {
-    High: "bg-red-100 text-red-700",
-    Medium: "bg-amber-100 text-amber-700",
-    Low: "bg-green-100 text-green-700",
+    High: "bg-red-300 text-red-700",
+    Medium: "bg-amber-200 text-amber-700",
+    Low: "bg-slate-500 text-white",
 };
 export const statusStyles: Record<string, string> = {
     "To Do": "bg-slate-100 text-slate-500",

@@ -51,6 +51,7 @@ const commentSchema = new Schema(
             },
         ],
         isEdited: { type: Boolean, default: false },
+        readBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
     },
     { timestamps: true }
 );

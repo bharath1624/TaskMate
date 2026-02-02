@@ -51,7 +51,7 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-8 2xl:space-y-12 pt-6">
+        <div className="space-y-8 2xl:space-y-12 pt-7 pb-10">
             <StatsCard data={data.stats} />
             <StatisticsCharts
                 stats={data.stats}
@@ -64,20 +64,8 @@ const Dashboard = () => {
             <div className="grid gap-6 lg:grid-cols-2">
                 <RecentProjects data={data.recentProjects} />
 
-                {data.upcomingTasks.length === 0 ? (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Upcoming Tasks</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-center text-muted-foreground py-8">
-                                No upcoming tasks yet
-                            </p>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <UpcomingTasks data={data.upcomingTasks} />
-                )}
+                <UpcomingTasks data={data.upcomingTasks} />
+
             </div>
 
         </div>

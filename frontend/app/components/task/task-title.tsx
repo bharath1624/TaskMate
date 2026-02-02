@@ -5,16 +5,11 @@ import { Edit } from "lucide-react";
 import { useUpdateTaskTitleMutation } from "@/hooks/use-task";
 import { toast } from "sonner";
 
-export const TaskTitle = ({
-    title,
-    taskId,
-}: {
-    title: string;
-    taskId: string;
-}) => {
+export const TaskTitle = ({ title, taskId, canEdit }: any) => {
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState(title);
     const { mutate, isPending } = useUpdateTaskTitleMutation();
+
     const updateTitle = () => {
         mutate(
             { taskId, title: newTitle },
@@ -23,42 +18,51 @@ export const TaskTitle = ({
                     setIsEditing(false);
                     toast.success("Title updated successfully");
                 },
-                onError: (error: any) => {
-                    const errorMessage = error.response.data.message;
-                    toast.error(errorMessage);
-                    console.log(error);
-                },
             }
         );
     };
 
-    return (
-        <div className="flex items-center gap-2">
-            {isEditing ? (
-                <Input
-                    className="text-xl! font-semibold w-full min-w-3xl"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    disabled={isPending}
-                />
-            ) : (
-                <h2 className="text-xl flex-1 font-semibold space-y-6">{title}</h2>
-            )}
+    const cancelEdit = () => {
+        setNewTitle(title);
+        setIsEditing(false);
+    };
 
-            {isEditing ? (
-                <Button
-                    className="py-0"
-                    size="sm"
-                    onClick={updateTitle}
-                    disabled={isPending}
-                >
-                    Save
-                </Button>
-            ) : (
-                <Edit
-                    className="size-3 cursor-pointer"
-                    onClick={() => setIsEditing(true)}
-                />
+    return (
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
+            <div className="min-h-10 flex items-center">
+                {isEditing ? (
+                    <Input
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        className="text-xl font-semibold"
+                        disabled={isPending}
+                    />
+                ) : (
+                    <h2 className="text-xl font-semibold">{title}</h2>
+                )}
+            </div>
+
+            {canEdit && (
+                <div className="flex items-center gap-2 shrink-0">
+                    {isEditing ? (
+                        <>
+                            <Button size="sm" onClick={updateTitle} disabled={isPending}>
+                                Save
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                                Cancel
+                            </Button>
+                        </>
+                    ) : (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setIsEditing(true)}
+                        >
+                            <Edit className="size-3 text-muted-foreground" />
+                        </Button>
+                    )}
+                </div>
             )}
         </div>
     );

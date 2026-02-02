@@ -51,6 +51,7 @@ export const StatisticsCharts = ({
         { name: "In Progress", color: "#3b82f6" },
         { name: "Planning", color: "#f59e0b" },
     ];
+
     const normalizedProjectStatusData = ALL_PROJECT_STATUSES.map(status => {
         const found = projectStatusData.find(d => d.name === status.name);
         return {
@@ -65,9 +66,7 @@ export const StatisticsCharts = ({
         inProgress: day.inProgress ?? 0,
         todo: day.todo ?? 0,
     }));
-    const filteredTaskTrendsData = normalizedTaskTrendsData.filter(
-        d => d.completed + d.inProgress + d.todo > 0
-    );
+
     const hasTaskActivity = taskTrendsData.some(
         d => d.completed + d.inProgress + d.todo > 0
     );
@@ -77,61 +76,109 @@ export const StatisticsCharts = ({
             <Card className="lg:col-span-2">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <div className="space-y-0.5">
-                        <CardTitle className="text-base font-medium">Task Trends</CardTitle>
+                        <CardTitle className="text-base font-medium">
+                            Task Trends
+                        </CardTitle>
                         <CardDescription>Daily task status</CardDescription>
                     </div>
                     <ChartLine className="size-5 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
-                    <div className="min-w-[350px]">
-                        {hasTaskActivity ? (
-                            <ChartContainer
-                                className="h-[360px]"
-                                config={{
-                                    completed: { color: "#10b981" },
-                                    inProgress: { color: "#3b82f6" },
-                                    todo: { color: "#6b7280" },
-                                }}
-                            >
-                                <BarChart
-                                    data={taskTrendsData}
-                                    layout="vertical"
-                                    barGap={0}
-                                    barCategoryGap={8}
-                                >
-                                    <YAxis
-                                        dataKey="name"
-                                        type="category"
-                                        tickLine={false}
-                                        axisLine={false}
-                                        fontSize={12}
-                                        padding={{ top: 0, bottom: 0 }}
-                                    />
-                                    <XAxis
-                                        type="number"
-                                        allowDecimals={false}
-                                        domain={[0, "dataMax + 1"]}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                    <ChartTooltip content={<ChartTooltipContent />} />
-                                    <ChartLegend content={<ChartLegendContent />} />
 
-                                    <Bar dataKey="completed" fill="#10b981" barSize={18} radius={[0, 4, 4, 0]} />
-                                    <Bar dataKey="inProgress" fill="#3b82f6" barSize={18} radius={[0, 4, 4, 0]} />
-                                    <Bar dataKey="todo" fill="#6b7280" barSize={18} radius={[0, 4, 4, 0]} />
-                                </BarChart>
-                            </ChartContainer>
-                        ) : (
-                            <div className="h-[360px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
-                                <ChartLine className="size-8 opacity-40" />
-                                <p className="font-medium">No task activity yet</p>
+                <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
+                    {hasTaskActivity ? (
+                        <div className="flex gap-8 items-center min-w-[400px]">
+                            {/* CHART */}
+                            <div className="flex-1">
+                                <ChartContainer
+                                    className="h-80"
+                                    config={{
+                                        completed: { color: "#10b981" },
+                                        inProgress: { color: "#3b82f6" },
+                                        todo: { color: "#6b7280" },
+                                    }}
+                                >
+                                    <BarChart
+                                        data={normalizedTaskTrendsData}
+                                        layout="vertical"
+                                        barSize={20}
+                                        barCategoryGap={10}
+                                    >
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            fontSize={12}
+                                            width={80}
+                                            interval={0}
+                                            allowDuplicatedCategory={false}
+                                        />
+
+                                        <XAxis
+                                            type="number"
+                                            allowDecimals={false}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+
+                                        <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            horizontal={false}
+                                        />
+
+                                        <ChartTooltip content={<ChartTooltipContent />} />
+
+                                        {/* STACKED BARS */}
+                                        <Bar
+                                            dataKey="completed"
+                                            stackId="tasks"
+                                            fill="#10b981"
+                                            radius={[0, 4, 4, 0]}
+                                            name="Completed"
+                                        />
+                                        <Bar
+                                            dataKey="inProgress"
+                                            stackId="tasks"
+                                            fill="#3b82f6"
+                                            name="In Progress"
+                                        />
+                                        <Bar
+                                            dataKey="todo"
+                                            stackId="tasks"
+                                            fill="#6b7280"
+                                            name="To Do"
+                                        />
+                                    </BarChart>
+                                </ChartContainer>
                             </div>
-                        )}
-                    </div>
+
+                            {/* RIGHT-SIDE LEGEND */}
+                            <div className="space-y-3 text-sm">
+                                <div className="flex items-center gap-3">
+                                    <span className="h-3 w-3 boarder-sm bg-emerald-500" />
+                                    <span className="font-medium">Completed</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="h-3 w-3 boarder-sm bg-blue-500" />
+                                    <span className="font-medium">In Progress</span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="h-3 w-3 boarder-sm bg-gray-500" />
+                                    <span className="font-medium">To Do</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-[360px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                            <ChartLine className="size-8 opacity-40" />
+                            <p className="font-medium">No task activity</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
+
 
             {/* project status  */}
 
@@ -149,11 +196,10 @@ export const StatisticsCharts = ({
                 </CardHeader>
 
                 <CardContent>
-                    <div className="flex items-center gap-8">
-
-                        {/* Pie Chart */}
+                    <div className="flex flex-col items-center gap-6">
+                        {/* PIE CHART */}
                         <ChartContainer
-                            className="h-[260px] w-[260px]"
+                            className="h-[280px] w-[300px]"
                             config={{
                                 Completed: { color: "#10b981" },
                                 "In Progress": { color: "#3b82f6" },
@@ -181,20 +227,27 @@ export const StatisticsCharts = ({
                             </PieChart>
                         </ChartContainer>
 
-                        {/* RIGHT SIDE: Color + Name ONLY */}
-                        <div className="space-y-3 text-sm">
+                        {/* LEGEND BELOW */}
+                        <div className="space-y-3 text-sm w-full max-w-xs">
                             {normalizedProjectStatusData.map(status => (
-                                <div key={status.name} className="flex items-center gap-3">
-                                    <span
-                                        className="h-3 w-3"
-                                        style={{ backgroundColor: status.color }}
-                                    />
+                                <div
+                                    key={status.name}
+                                    className="flex items-center justify-between"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span
+                                            className="h-3 w-3 rounded-sm"
+                                            style={{ backgroundColor: status.color }}
+                                        />
+                                        <span className="font-medium">{status.name}</span>
+                                    </div>
 
-                                    <span className="font-medium">{status.name}</span>
+                                    <span className="text-muted-foreground font-medium">
+                                        {status.value}
+                                    </span>
                                 </div>
                             ))}
                         </div>
-
                     </div>
                 </CardContent>
             </Card>
@@ -241,7 +294,6 @@ export const StatisticsCharts = ({
                                     ))}
                                 </Pie>
                                 <ChartTooltip />
-                                <ChartLegend content={<ChartLegendContent />} />
                             </PieChart>
                         </ChartContainer>
                     </div>
@@ -278,10 +330,13 @@ export const StatisticsCharts = ({
                                 >
                                     <XAxis
                                         dataKey="name"
-                                        stroke="#888888"
-                                        fontSize={12}
                                         tickLine={false}
                                         axisLine={false}
+                                        fontSize={12}
+                                        interval={0}              // 👈 force show all labels
+                                        angle={-30}               // 👈 rotate slightly
+                                        textAnchor="end"          // 👈 align nicely
+                                        height={70}               // 👈 give space for labels
                                     />
                                     <YAxis
                                         stroke="#888888"
@@ -296,13 +351,13 @@ export const StatisticsCharts = ({
                                         dataKey="total"
                                         fill="#000"
                                         radius={[4, 4, 0, 0]}
-                                        name="Total Tasks"
+                                        name="Total Tasks "
                                     />
                                     <Bar
                                         dataKey="completed"
                                         fill="#3b82f6"
                                         radius={[4, 4, 0, 0]}
-                                        name="Completed Tasks"
+                                        name="Completed Tasks "
                                     />
                                 </BarChart>
                             </ChartContainer>
@@ -311,12 +366,12 @@ export const StatisticsCharts = ({
                         {/* RIGHT SIDE LEGEND */}
                         <div className="space-y-3 text-sm">
                             <div className="flex items-center gap-3">
-                                <span className="h-3 w-3 bg-black rounded-sm" />
+                                <span className="h-3 w-3 bg-black boarder-sm" />
                                 <span>Total Tasks</span>
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <span className="h-3 w-3 bg-blue-500 rounded-sm" />
+                                <span className="h-3 w-3 bg-blue-500 boarder-sm" />
                                 <span>Completed Tasks</span>
                             </div>
                         </div>

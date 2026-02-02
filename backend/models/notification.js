@@ -26,7 +26,7 @@ const NotificationSchema = new mongoose.Schema(
         // 🔽 REQUIRED FOR NAVIGATION
         targetType: {
             type: String,
-            enum: ["task", "project"],
+            enum: ["task", "project", "workspace"],
             required: true,
         },
 

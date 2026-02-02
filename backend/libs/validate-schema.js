@@ -5,7 +5,6 @@ const registerSchema = z.object({
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters long"),
 });
-
 const loginSchema = z.object({
     email: z.string().email("Invalid email address"),
     password: z.string().min(1, "Password is required"),
@@ -46,15 +45,8 @@ const projectSchema = z.object({
     ]),
     startDate: z.string(),
     dueDate: z.string().optional(),
-    tags: z.string().optional(),
-    members: z
-        .array(
-            z.object({
-                user: z.string(),
-                role: z.enum(["admin", "member", "viewer"]),
-            })
-        )
-        .optional(),
+    tags: z.array(z.string()).optional(),
+    members: z.array(z.string()).optional(),
 });
 const taskSchema = z.object({
     title: z.string().min(1, "Task title is required"),

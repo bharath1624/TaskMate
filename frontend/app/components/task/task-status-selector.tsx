@@ -12,9 +12,11 @@ import { toast } from "sonner";
 export const TaskStatusSelector = ({
     status,
     taskId,
+    canEdit, // 🔒 1. Add this prop
 }: {
     status: TaskStatus;
     taskId: string;
+    canEdit: boolean; // 🔒 2. Define type
 }) => {
     const { mutate, isPending } = useUpdateTaskStatusMutation();
 
@@ -33,9 +35,15 @@ export const TaskStatusSelector = ({
             }
         );
     };
+
     return (
-        <Select value={status || ""} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-[180px]" disabled={isPending}>
+        <Select
+            value={status || ""}
+            onValueChange={handleStatusChange}
+            // 🔒 3. Disable if pending OR if user doesn't have permission
+            disabled={isPending || !canEdit}
+        >
+            <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
             </SelectTrigger>
 

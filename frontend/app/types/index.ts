@@ -2,6 +2,7 @@ export interface User {
     _id: string;
     email: string;
     name: string;
+    role?: string;
     createdAt: Date;
     isEmailVerified: boolean;
     updatedAt: Date;
@@ -45,6 +46,7 @@ export interface Project {
         user: User;
         role: "admin" | "member" | "owner" | "viewer";
     }[];
+    createdBy: string;
     createdAt: Date;
     updatedAt: Date;
     isArchived: boolean;
@@ -149,6 +151,7 @@ export interface Comment {
         fileType?: string;
         fileSize?: number;
     }[];
+    readBy?: string[];
 }
 
 export interface StatsCardProps {

@@ -181,6 +181,19 @@ router.delete(
     }),
     deleteTaskAttachment
 );
-
+// Add this before export default router;
+router.put(
+    "/:taskId/read",
+    authMiddleware,
+    // (Optional: add validation if you want)
+    validateRequest({
+        params: z.object({ taskId: z.string() }),
+    }),
+    // You must import this controller function
+    (req, res, next) => {
+        // Dynamic import or ensure it is imported at the top
+        import("../controllers/task.js").then(c => c.markCommentsAsRead(req, res)).catch(next);
+    }
+);
 
 export default router;

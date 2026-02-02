@@ -271,10 +271,16 @@ const verifyResetPasswordTokenAndResetPassword = async (req, res) => {
     try {
         const { token, newPassword, confirmPassword } = req.body;
 
-        const payload = jwt.verify(token, process.env.JWT_SECRET);
-
-        if (!payload) {
-            return res.status(401).json({ message: "Unauthorized" });
+        let payload;
+        try {
+            payload = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            if (err.name === "TokenExpiredError") {
+                return res.status(401).json({
+                    message: "Reset link has expired. Please request a new one.",
+                });
+            }
+            return res.status(401).json({ message: "Invalid reset token" });
         }
 
         const { userId, purpose } = payload;
@@ -283,44 +289,39 @@ const verifyResetPasswordTokenAndResetPassword = async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const verification = await Verification.findOne({
-            userId,
-            token,
-        });
+        const verification = await Verification.findOne({ userId, token });
 
         if (!verification) {
-            return res.status(401).json({ message: "Unauthorized" });
+            return res.status(401).json({ message: "Invalid or used reset link" });
         }
 
-        const isTokenExpired = verification.expiresAt < new Date();
-
-        if (isTokenExpired) {
-            return res.status(401).json({ message: "Token expired" });
-        }
-
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(401).json({ message: "Unauthorized" });
+        if (verification.expiresAt < new Date()) {
+            await Verification.findByIdAndDelete(verification._id);
+            return res.status(401).json({
+                message: "Reset link has expired. Please request a new one.",
+            });
         }
 
         if (newPassword !== confirmPassword) {
             return res.status(400).json({ message: "Passwords do not match" });
         }
 
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
         const salt = await bcrypt.genSalt(10);
-
-        const hashPassword = await bcrypt.hash(newPassword, salt);
-
-        user.password = hashPassword;
+        user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
         await Verification.findByIdAndDelete(verification._id);
 
         res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
 export { registerUser, loginUser, verifyEmail, resetPasswordRequest, verifyResetPasswordTokenAndResetPassword };

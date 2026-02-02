@@ -12,12 +12,12 @@ export const useCreateWorkspace = () => {
 };
 
 export const useGetWorkspacesQuery = () => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isLoading } = useAuth();
 
     return useQuery<Workspace[]>({
         queryKey: ["workspaces"],
         queryFn: async () => fetchData<Workspace[]>("/workspaces"),
-        enabled: isAuthenticated, // 🔥 FIX-2
+        enabled: !isLoading && isAuthenticated, // 🔥 FIX-2
     });
 };
 

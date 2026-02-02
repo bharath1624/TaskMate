@@ -32,11 +32,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, UserIcon } from "lucide-react";
 import { Calendar } from "../ui/calendar";
 import { toast } from "sonner";
 import { UseCreateProject } from "@/hooks/use-project";
 import { Checkbox } from "../ui/checkbox";
+import { useUserProfileQuery } from "@/hooks/use-auth";
 
 interface CreateProjectDialogProps {
     isOpen: boolean;
@@ -53,26 +54,46 @@ export const CreateProjectDialog = ({
     workspaceId,
     workspaceMembers,
 }: CreateProjectDialogProps) => {
+
+    // ✅ FIX: Get raw data and cast to 'any' to avoid TypeScript errors
+    const { data: rawData } = useUserProfileQuery();
+    const userData = rawData as any;
+    const currentUserId = userData?.user?._id || userData?._id;
+
     const form = useForm<CreateProjectFormData>({
         resolver: zodResolver(projectSchema),
         defaultValues: {
             title: "",
             description: "",
             status: ProjectStatus.PLANNING,
-            startDate: "",
-            dueDate: "",
+            startDate: undefined,
+            dueDate: undefined,
             members: [],
-            tags: undefined,
+            tags: "",
         },
     });
+
     const { mutate, isPending } = UseCreateProject();
 
     const onSubmit = (values: CreateProjectFormData) => {
         if (!workspaceId) return;
 
+        const memberIds = values.members?.map((m: any) => {
+            return typeof m === 'object' && m.user ? m.user : m;
+        }) || [];
+
+        const payload = {
+            title: values.title,
+            description: values.description,
+            status: values.status,
+            members: memberIds,
+            startDate: values.startDate ? new Date(values.startDate).toISOString() : undefined,
+            dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
+        };
+
         mutate(
             {
-                projectData: values,
+                projectData: payload as any,
                 workspaceId,
             },
             {
@@ -82,9 +103,8 @@ export const CreateProjectDialog = ({
                     onOpenChange(false);
                 },
                 onError: (error: any) => {
-                    const errorMessage = error.response.data.message;
+                    const errorMessage = error.response?.data?.message || "Failed to create project";
                     toast.error(errorMessage);
-                    console.log(error);
                 },
             }
         );
@@ -92,7 +112,7 @@ export const CreateProjectDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[540px]">
+            <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Create Project</DialogTitle>
                     <DialogDescription>
@@ -102,6 +122,7 @@ export const CreateProjectDialog = ({
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Title */}
                         <FormField
                             control={form.control}
                             name="title"
@@ -115,6 +136,7 @@ export const CreateProjectDialog = ({
                                 </FormItem>
                             )}
                         />
+                        {/* Description */}
                         <FormField
                             control={form.control}
                             name="description"
@@ -122,16 +144,14 @@ export const CreateProjectDialog = ({
                                 <FormItem>
                                     <FormLabel>Project Description</FormLabel>
                                     <FormControl>
-                                        <Textarea
-                                            {...field}
-                                            placeholder="Project Description"
-                                            rows={3}
-                                        />
+                                        <Textarea {...field} placeholder="Project Description" rows={3} value={field.value || ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
+
+                        {/* Status */}
                         <FormField
                             control={form.control}
                             name="status"
@@ -143,7 +163,6 @@ export const CreateProjectDialog = ({
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Select Project Status" />
                                             </SelectTrigger>
-
                                             <SelectContent>
                                                 {Object.values(ProjectStatus).map((status) => (
                                                     <SelectItem key={status} value={status}>
@@ -158,6 +177,7 @@ export const CreateProjectDialog = ({
                             )}
                         />
 
+                        {/* Dates */}
                         <div className="grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
@@ -168,32 +188,13 @@ export const CreateProjectDialog = ({
                                         <FormControl>
                                             <Popover modal={true}>
                                                 <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant={"outline"}
-                                                        className={
-                                                            "w-full justify-start text-left font-normal" +
-                                                            (!field.value ? "text-muted-foreground" : "")
-                                                        }
-                                                    >
+                                                    <Button variant={"outline"} className={"w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : "")}>
                                                         <CalendarIcon className="size-4 mr-2" />
-                                                        {field.value ? (
-                                                            format(new Date(field.value), "PPPP")
-                                                        ) : (
-                                                            <span>Pick a date</span>
-                                                        )}
+                                                        {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-
-                                                <PopoverContent>
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={
-                                                            field.value ? new Date(field.value) : undefined
-                                                        }
-                                                        onSelect={(date) => {
-                                                            field.onChange(date?.toISOString() || undefined);
-                                                        }}
-                                                    />
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
                                                 </PopoverContent>
                                             </Popover>
                                         </FormControl>
@@ -210,32 +211,13 @@ export const CreateProjectDialog = ({
                                         <FormControl>
                                             <Popover modal={true}>
                                                 <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant={"outline"}
-                                                        className={
-                                                            "w-full justify-start text-left font-normal" +
-                                                            (!field.value ? "text-muted-foreground" : "")
-                                                        }
-                                                    >
+                                                    <Button variant={"outline"} className={"w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : "")}>
                                                         <CalendarIcon className="size-4 mr-2" />
-                                                        {field.value ? (
-                                                            format(new Date(field.value), "PPPP")
-                                                        ) : (
-                                                            <span>Pick a date</span>
-                                                        )}
+                                                        {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                                     </Button>
                                                 </PopoverTrigger>
-
-                                                <PopoverContent>
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={
-                                                            field.value ? new Date(field.value) : undefined
-                                                        }
-                                                        onSelect={(date) => {
-                                                            field.onChange(date?.toISOString() || undefined);
-                                                        }}
-                                                    />
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
                                                 </PopoverContent>
                                             </Popover>
                                         </FormControl>
@@ -245,6 +227,7 @@ export const CreateProjectDialog = ({
                             />
                         </div>
 
+                        {/* Tags */}
                         <FormField
                             control={form.control}
                             name="tags"
@@ -252,121 +235,66 @@ export const CreateProjectDialog = ({
                                 <FormItem>
                                     <FormLabel>Tags</FormLabel>
                                     <FormControl>
-                                        <Input {...field} placeholder="Tags separated by comma" />
+                                        {/* @ts-ignore */}
+                                        <Input {...field} value={Array.isArray(field.value) ? field.value.join(", ") : (field.value || "")} onChange={(e) => field.onChange(e.target.value)} placeholder="Tags separated by comma (e.g., Role, Management)" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
 
+                        {/* Members - Filter Logic Applied */}
                         <FormField
                             control={form.control}
                             name="members"
                             render={({ field }) => {
                                 const selectedMembers = field.value || [];
 
+                                // ✅ Safe filtering using optional chaining
+                                const availableMembers = workspaceMembers.filter(
+                                    (member) => member.role !== "owner"
+                                );
+
                                 return (
                                     <FormItem>
-                                        <FormLabel>Members</FormLabel>
+                                        <FormLabel>Assignes</FormLabel>
                                         <FormControl>
                                             <Popover>
                                                 <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant={"outline"}
-                                                        className="w-full justify-start text-left font-normal min-h-11"
-                                                    >
+                                                    <Button variant={"outline"} className="w-full justify-start text-left font-normal min-h-11">
                                                         {selectedMembers.length === 0 ? (
-                                                            <span className="text-muted-foreground">
-                                                                Select Members
+                                                            <span className="text-muted-foreground flex items-center gap-2">
+                                                                <UserIcon className="size-4" /> Select team
                                                             </span>
-                                                        ) : selectedMembers.length <= 2 ? (
-                                                            selectedMembers.map((m) => {
-                                                                const member = workspaceMembers.find(
-                                                                    (wm) => wm.user._id === m.user
-                                                                );
-
-                                                                return `${member?.user.name} (${member?.role})`;
-                                                            })
                                                         ) : (
                                                             `${selectedMembers.length} members selected`
                                                         )}
                                                     </Button>
                                                 </PopoverTrigger>
-                                                <PopoverContent
-                                                    className="w-full max-w-60 overflow-y-auto"
-                                                    align="start"
-                                                >
-                                                    <div className="flex flex-col gap-2">
-                                                        {workspaceMembers.map((member) => {
-                                                            const selectedMember = selectedMembers.find(
-                                                                (m) => m.user === member.user._id
-                                                            );
-
+                                                <PopoverContent className="w-full max-w-xs p-2" align="start">
+                                                    <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
+                                                        {availableMembers.map((member) => {
+                                                            const isSelected = selectedMembers.some((m) => m.user === member.user._id);
                                                             return (
                                                                 <div
                                                                     key={member._id}
-                                                                    className="flex items-center gap-2 p-2 border rounded"
+                                                                    className="flex items-center space-x-2 p-2 rounded hover:bg-slate-100 cursor-pointer"
+                                                                    onClick={() => {
+                                                                        if (isSelected) {
+                                                                            field.onChange(selectedMembers.filter((m) => m.user !== member.user._id));
+                                                                        } else {
+                                                                            field.onChange([
+                                                                                ...selectedMembers,
+                                                                                { user: member.user._id, role: "contributor" },
+                                                                            ]);
+                                                                        }
+                                                                    }}
                                                                 >
-                                                                    <Checkbox
-                                                                        checked={!!selectedMember}
-                                                                        onCheckedChange={(checked) => {
-                                                                            if (checked) {
-                                                                                field.onChange([
-                                                                                    ...selectedMembers,
-                                                                                    {
-                                                                                        user: member.user._id,
-                                                                                        role: "contributor",
-                                                                                    },
-                                                                                ]);
-                                                                            } else {
-                                                                                field.onChange(
-                                                                                    selectedMembers.filter(
-                                                                                        (m) => m.user !== member.user._id
-                                                                                    )
-                                                                                );
-                                                                            }
-                                                                        }}
-                                                                        id={`member-${member.user._id}`}
-                                                                    />
-                                                                    <span className="truncate flex-1">
-                                                                        {member.user.name}
-                                                                    </span>
-
-                                                                    {selectedMember && (
-                                                                        <Select
-                                                                            value={selectedMember.role}
-                                                                            onValueChange={(role) => {
-                                                                                field.onChange(
-                                                                                    selectedMembers.map((m) =>
-                                                                                        m.user === member.user._id
-                                                                                            ? {
-                                                                                                ...m,
-                                                                                                role: role as
-                                                                                                    | "contributor"
-                                                                                                    | "manager"
-                                                                                                    | "viewer",
-                                                                                            }
-                                                                                            : m
-                                                                                    )
-                                                                                );
-                                                                            }}
-                                                                        >
-                                                                            <SelectTrigger>
-                                                                                <SelectValue placeholder="Select Role" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="manager">
-                                                                                    Manager
-                                                                                </SelectItem>
-                                                                                <SelectItem value="contributor">
-                                                                                    Contributor
-                                                                                </SelectItem>
-                                                                                <SelectItem value="viewer">
-                                                                                    Viewer
-                                                                                </SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    )}
+                                                                    <Checkbox checked={isSelected} />
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-medium">{member.user.name}</span>
+                                                                        <span className="text-xs text-muted-foreground capitalize">{member.role}</span>
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}

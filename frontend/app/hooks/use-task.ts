@@ -211,13 +211,27 @@ export const useAchievedTaskMutation = () => {
 
     return useMutation({
         mutationFn: (data: { taskId: string }) =>
-            postData(`/tasks/${data.taskId}/achieved`, {}),
+            postData(`/tasks/${data.taskId}/achieved`, {}), // Ensure this matches your route (is it 'archive' or 'achieved'?)
+
         onSuccess: (data: any) => {
+            // 1. Refresh Task Details
             queryClient.invalidateQueries({
                 queryKey: ["task", data._id],
             });
+
+            // 2. Refresh Activity Log
             queryClient.invalidateQueries({
                 queryKey: ["task-activity", data._id],
+            });
+
+            // 3. 👇 CRITICAL: Force the Archived Page to reload
+            queryClient.invalidateQueries({
+                queryKey: ["archived-data"],
+            });
+
+            // 4. Update Project Board (to remove the task from the board view)
+            queryClient.invalidateQueries({
+                queryKey: ["project", data.project],
             });
         },
     });
@@ -289,7 +303,15 @@ export const useDeleteTaskAttachmentMutation = () => {
     });
 };
 
-
-
-
+export const useMarkCommentsReadMutation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // This calls the API we just created
+        mutationFn: (taskId: string) => updateData(`/tasks/${taskId}/read`, {}),
+        onSuccess: (_, taskId) => {
+            // Refetch comments to update the UI
+            queryClient.invalidateQueries({ queryKey: ["comments", taskId] });
+        },
+    });
+};
 

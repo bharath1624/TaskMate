@@ -47,32 +47,37 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex flex-col items-center justify-center space-y-2">
-                    <h1 className="text-2xl font-bold">Forgot Password</h1>
-                    <p className="text-muted-foreground">
-                        Enter your email to reset your password
+        <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
+            <div className="w-full max-w-md space-y-8">
+                <div className="flex flex-col items-center justify-center space-y-1 text-center">
+                    <h1 className="text-2xl font-bold  text-blue-600">Forgot Password</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Enter email to get reset link
                     </p>
                 </div>
 
-                <Card>
+                <Card className="max-w-md w-full shadow-xl border-muted px-2 md:px-4">
                     <CardHeader>
-                        <Link to="/sign-in" className="flex items-center gap-2">
+                        <Link
+                            to="/sign-in"
+                            className="flex items-center gap-2 text-sm font-medium text-foreground hover:opacity-80 transition-opacity"
+                        >
                             <ArrowLeft className="w-4 h-4" />
                             <span>Back to sign in</span>
                         </Link>
+
                     </CardHeader>
 
                     <CardContent>
                         {isSuccess ? (
-                            <div className="flex flex-col items-center justify-center">
-                                <CheckCircle className="w-10 h-10 text-green-500" />
-                                <h1 className="text-2xl font-bold">
-                                    Password reset email sent
-                                </h1>
-                                <p className="text-muted-foreground">
-                                    Check your email for a link to reset your password
+                            <div className="flex flex-col items-center justify-center text-center space-y-3 py-6">
+                                <CheckCircle className="w-12 h-12 text-green-500" />
+                                <h2 className="text-xl font-semibold">
+                                    Email sent successfully
+                                </h2>
+                                <p className="text-sm text-muted-foreground max-w-sm">
+                                    We’ve sent a password reset link to your email.
+                                    Please check your inbox.
                                 </p>
                             </div>
                         ) : (
@@ -80,7 +85,7 @@ const ForgotPassword = () => {
                                 <Form {...form}>
                                     <form
                                         onSubmit={form.handleSubmit(onSubmit)}
-                                        className="space-y-4"
+                                        className="space-y-5"
                                     >
                                         <FormField
                                             name="email"
@@ -98,7 +103,7 @@ const ForgotPassword = () => {
 
                                         <Button
                                             type="submit"
-                                            className="w-full"
+                                            className="w-full  bg-blue-600  hover:bg-blue-700  text-white"
                                             disabled={isPending}
                                         >
                                             {isPending ? (

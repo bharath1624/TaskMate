@@ -8,61 +8,76 @@ import { recordActivity } from "../libs/index.js";
 import Notification from "../models/notification.js";
 import { io } from "../index.js";
 import mongoose from "mongoose";
+// ✅ 1. ROBUST ID HELPER
+const safeId = (id) => {
+    if (!id) return "";
+    return (id._id || id).toString(); // Handles populated objects OR raw IDs
+};
+
+// ✅ 2. GOD MODE CHECKER
+const checkTaskAccess = async (req, projectId) => {
+    const userId = req.user._id.toString(); // Ensure String
+
+    const project = await Project.findById(projectId);
+    if (!project) throw new Error("Project not found");
+
+    const workspace = await Workspace.findById(project.workspace);
+    if (!workspace) throw new Error("Workspace not found");
+
+    // A. Workspace Owner (GOD MODE)
+    if (workspace.owner.toString() === userId) {
+        return { project, workspace, isAuthorized: true, canEdit: true };
+    }
+
+    // B. Workspace Admin (GOD MODE)
+    // iterate members and convert IDs to string safely
+    const wsMember = workspace.members.find(m =>
+        (m.user._id || m.user).toString() === userId
+    );
+
+    if (wsMember && (wsMember.role === "admin" || wsMember.role === "owner")) {
+        return { project, workspace, isAuthorized: true, canEdit: true };
+    }
+
+    // C. Project Specific Role
+    const projectMember = project.members.find(m =>
+        (m.user._id || m.user).toString() === userId
+    );
+
+    if (projectMember) {
+        const isProjectAdmin = projectMember.role === "admin";
+        return {
+            project,
+            workspace,
+            isAuthorized: true,
+            canEdit: isProjectAdmin // Only Admins get Edit rights here
+        };
+    }
+
+    return { project, workspace, isAuthorized: false, canEdit: false };
+};
 
 const createTask = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { title, description, status, priority, dueDate, assignees } =
-            req.body;
+        const { title, description, status, priority, dueDate, assignees } = req.body;
 
-        const project = await Project.findById(projectId);
+        const { project, workspace, isAuthorized } = await checkTaskAccess(req, projectId);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const workspace = await Workspace.findById(project.workspace);
-
-        if (!workspace) {
-            return res.status(404).json({
-                message: "Workspace not found",
-            });
-        }
-
-        const isMember = workspace.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this workspace",
-            });
-        }
-        console.log("📦 Incoming assignees:", assignees);
-        const normalizedAssignees = Array.isArray(assignees)
-            ? assignees
-            : assignees
-                ? [assignees]
-                : [];
-
+        const normalizedAssignees = Array.isArray(assignees) ? assignees : (assignees ? [assignees] : []);
 
         const newTask = await Task.create({
-            title,
-            description,
-            status,
-            priority,
-            dueDate,
+            title, description, status, priority, dueDate,
             assignees: normalizedAssignees,
             project: projectId,
             createdBy: req.user._id,
         });
+
         project.tasks.push(newTask._id);
         await project.save();
-        // 🔔 NOTIFY ASSIGNEES (REAL-TIME + DB)
+
         if (normalizedAssignees.length > 0) {
-            // 🔔 NOTIFY ASSIGNEES (DB + REAL-TIME)
             for (const userId of normalizedAssignees) {
                 await Notification.create({
                     user: userId,
@@ -73,407 +88,229 @@ const createTask = async (req, res) => {
                     projectId: project._id,
                     workspaceId: workspace._id,
                 });
-
-                io.to(userId.toString()).emit("notification", {
-                    title: "Task assigned",
-                    message: `You were assigned to task "${newTask.title}"`,
-                    targetType: "task",
-                    targetId: newTask._id,
-                    projectId: project._id,
-                    workspaceId: workspace._id,
-                });
-
-                console.log("📢 Notification emitted to:", userId.toString());
+                if (global.io) global.io.to(userId.toString()).emit("notification", { title: "Task assigned", message: `You were assigned to task "${newTask.title}"` });
             }
-
         }
 
+        if (global.io) global.io.to(projectId).emit("task_created", newTask);
 
         res.status(201).json(newTask);
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 const getTaskById = async (req, res) => {
     try {
         const { taskId } = req.params;
-
         const task = await Task.findById(taskId)
             .populate("assignees", "name profilePicture")
             .populate("watchers", "name profilePicture");
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        const project = await Project.findById(task.project).populate(
-            "members.user",
-            "name profilePicture"
-        );
+        const { project, workspace, canEdit, isAuthorized } = await checkTaskAccess(req, task.project);
 
-        res.status(200).json({ task, project });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
+
+        // 1. Populate Project Members (FULL LIST)
+        await project.populate("members.user", "name profilePicture");
+
+        // 2. Populate Workspace Context
+        await workspace.populate("owner", "name profilePicture");
+        await workspace.populate("members.user", "name profilePicture");
+
+        // 3. CONSOLIDATE MEMBERS (Superset: Project Members + Owner + All Admins)
+        // We send everyone so the "Assign" dropdown works.
+        const projectObj = project.toObject();
+        const combinedMembers = [];
+        const seenIds = new Set();
+
+        const addMember = (user, role) => {
+            if (!user || !user._id) return;
+            const idStr = user._id.toString();
+            if (!seenIds.has(idStr)) {
+                seenIds.add(idStr);
+                combinedMembers.push({ user, role });
+            }
+        };
+
+        // A. Add ALL Project Members (Fixes: "Not showing members in assigns")
+        project.members.forEach(m => addMember(m.user, m.role));
+
+        // B. Add Workspace Owner (Fixes: "Not seeing owner name")
+        addMember(workspace.owner, "owner");
+
+        // C. Add Workspace Admins (Always mentionable)
+        workspace.members.forEach(m => {
+            if (m.role === 'admin') {
+                addMember(m.user, "admin");
+            }
         });
+
+        projectObj.members = combinedMembers;
+
+        res.status(200).json({
+            task,
+            project: projectObj,
+            canEdit,
+            workspaceOwner: workspace.owner
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 const updateTaskTitle = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { title } = req.body;
-
+        const { taskId } = req.params; const { title } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const oldTitle = task.title;
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.title = title;
         await task.save();
+        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task title to ${title}` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `updated task title from ${oldTitle} to ${title}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const updateTaskDescription = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { description } = req.body;
-
+        const { taskId } = req.params; const { description } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const oldDescription =
-            task.description.substring(0, 50) +
-            (task.description.length > 50 ? "..." : "");
-        const newDescription =
-            description.substring(0, 50) + (description.length > 50 ? "..." : "");
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.description = description;
         await task.save();
+        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task description` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `updated task description from ${oldDescription} to ${newDescription}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const updateTaskStatus = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { status } = req.body;
-
+        const { taskId } = req.params; const { status } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const oldStatus = task.status;
+        // NOTE: Even regular members usually need to update status. 
+        // checkTaskAccess returns isAuthorized=true for members.
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.status = status;
         await task.save();
+        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task status to ${status}` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `updated task status from ${oldStatus} to ${status}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const updateTaskAssignees = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { assignees } = req.body;
-
+        const { taskId } = req.params; const { assignees } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const oldAssignees = task.assignees;
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.assignees = assignees;
         await task.save();
+        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task assignees` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `updated task assignees from ${oldAssignees.length} to ${assignees.length}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const updateTaskPriority = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { priority } = req.body;
-
+        const { taskId } = req.params; const { priority } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const oldPriority = task.priority;
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.priority = priority;
         await task.save();
+        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task priority to ${priority}` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `updated task priority from ${oldPriority} to ${priority}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const addSubTask = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { title } = req.body;
-
+        const { taskId } = req.params; const { title } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
-        const project = await Project.findById(task.project);
-
-        if (!project) {
-            return res.status(404).json({
-                message: "Project not found",
-            });
-        }
-
-        const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
-        );
-
-        if (!isMember) {
-            return res.status(403).json({
-                message: "You are not a member of this project",
-            });
-        }
-
-        const newSubTask = {
-            title,
-            completed: false,
-        };
-
-        task.subtasks.push(newSubTask);
+        task.subtasks.push({ title, completed: false });
         await task.save();
+        await recordActivity(req.user._id, "created_subtask", "Task", taskId, { description: `created subtask ${title}` });
 
-        // record activity
-        await recordActivity(req.user._id, "created_subtask", "Task", taskId, {
-            description: `created subtask ${title}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(201).json(task);
-    } catch (error) {
-        console.log(error);
-
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
 const updateSubTask = async (req, res) => {
     try {
-        const { taskId, subTaskId } = req.params;
-        const { completed } = req.body;
-
+        const { taskId, subTaskId } = req.params; const { completed } = req.body;
         const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        if (!task) {
-            return res.status(404).json({
-                message: "Task not found",
-            });
-        }
-
-        const subTask = task.subtasks.find(
-            (subTask) => subTask._id.toString() === subTaskId
-        );
-
-        if (!subTask) {
-            return res.status(404).json({
-                message: "Subtask not found",
-            });
-        }
+        const subTask = task.subtasks.find(st => st._id.toString() === subTaskId);
+        if (!subTask) return res.status(404).json({ message: "Subtask not found" });
 
         subTask.completed = completed;
         await task.save();
+        await recordActivity(req.user._id, "updated_subtask", "Task", taskId, { description: `updated subtask ${subTask.title}` });
 
-        // record activity
-        await recordActivity(req.user._id, "updated_subtask", "Task", taskId, {
-            description: `updated subtask ${subTask.title}`,
-        });
-
+        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    }
+    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
 };
 
+const deleteTask = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const task = await Task.findById(taskId);
+        if (!task) return res.status(404).json({ message: "Task not found" });
+
+        const { canEdit } = await checkTaskAccess(req, task.project);
+        // Only Admins/Owners (who have canEdit=true) can delete
+        if (!canEdit) return res.status(403).json({ message: "Only Admins can delete tasks" });
+
+        const projectId = task.project.toString();
+        await Project.findByIdAndUpdate(projectId, { $pull: { tasks: taskId } });
+        await Comment.deleteMany({ task: taskId });
+        await ActivityLog.deleteMany({ resourceId: taskId });
+        await Task.findByIdAndDelete(taskId);
+
+        if (global.io) global.io.to(projectId).emit("task_deleted", taskId);
+        return res.status(200).json({ success: true, taskId, project: projectId });
+    } catch (error) { console.error("DELETE TASK ERROR:", error); return res.status(500).json({ message: "Delete failed" }); }
+};
 const getActivityByResourceId = async (req, res) => {
     try {
         const { resourceId } = req.params;
@@ -512,6 +349,7 @@ const addComment = async (req, res) => {
     try {
         const { taskId } = req.params;
         const { text } = req.body;
+        const userId = req.user._id;
 
         const task = await Task.findById(taskId);
 
@@ -521,7 +359,7 @@ const addComment = async (req, res) => {
             });
         }
 
-        const project = await Project.findById(task.project);
+        const project = await Project.findById(task.project).populate("members.user");
 
         if (!project) {
             return res.status(404).json({
@@ -530,7 +368,7 @@ const addComment = async (req, res) => {
         }
 
         const isMember = project.members.some(
-            (member) => member.user.toString() === req.user._id.toString()
+            (member) => member.user._id.toString() === userId.toString()
         );
 
         if (!isMember) {
@@ -542,17 +380,63 @@ const addComment = async (req, res) => {
         const newComment = await Comment.create({
             text,
             task: taskId,
-            author: req.user._id,
+            author: userId,
+            readBy: [userId], // Author has read their own comment
         });
 
         task.comments.push(newComment._id);
         await task.save();
 
-        // record activity
-        await recordActivity(req.user._id, "added_comment", "Task", taskId, {
-            description: `added comment ${text.substring(0, 50) + (text.length > 50 ? "..." : "")
-                }`,
+        // 1. Record Activity
+        await recordActivity(userId, "added_comment", "Task", taskId, {
+            description: `added comment: ${text.substring(0, 50) + (text.length > 50 ? "..." : "")}`,
         });
+
+        // 2. Handle @Mentions Logic
+        const mentions = text.match(/@\w+/g); // Find words starting with @
+
+        if (mentions) {
+            // Remove '@' and get unique names
+            const mentionedNames = [...new Set(mentions.map(m => m.slice(1).toLowerCase()))];
+
+            // Filter project members who match the mentioned names
+            // Note: We populated 'members.user' above so we can access names
+            const mentionedUsers = project.members.filter(m => {
+                const memberName = (m.user.name || "").replace(/\s/g, "").toLowerCase();
+                return mentionedNames.includes(memberName);
+            });
+
+            for (const member of mentionedUsers) {
+                const recipientId = member.user._id.toString();
+
+                // Don't notify self
+                if (recipientId === userId.toString()) continue;
+
+                // Create DB Notification
+                await Notification.create({
+                    user: recipientId,
+                    title: "You were mentioned",
+                    message: `${req.user.name} mentioned you in task: ${task.title}`,
+                    targetType: "task",
+                    targetId: task._id,
+                    workspaceId: task.workspace,
+                    projectId: task.project
+                });
+
+                // Socket Emit
+                if (global.io) {
+                    global.io.to(recipientId).emit("notification", {
+                        title: "You were mentioned",
+                        message: `${req.user.name} mentioned you in task: ${task.title}`,
+                    });
+                }
+            }
+        }
+
+        // 3. Emit Real-time Comment Update
+        if (global.io) {
+            global.io.to(project._id.toString()).emit("comments_updated", { taskId });
+        }
 
         res.status(201).json(newComment);
     } catch (error) {
@@ -668,51 +552,39 @@ const achievedTask = async (req, res) => {
         });
     }
 };
+
 const getMyTasks = async (req, res) => {
     try {
-        const tasks = await Task.find({ assignees: { $in: [req.user._id] } })
-            .populate("project", "title workspace")
-            .sort({ createdAt: -1 });
+        const userId = req.user._id;
+
+        // 1. Find all ACTIVE projects first
+        // We only want tasks that belong to projects that are NOT archived.
+        const activeProjects = await Project.find({
+            isArchived: false,
+            // Optional: You can also ensure the user is still a member of these projects
+            // members: { $elemMatch: { user: userId } } 
+        }).select("_id");
+
+        const activeProjectIds = activeProjects.map(p => p._id);
+
+        // 2. Find tasks assigned to me that match our criteria
+        const tasks = await Task.find({
+            assignees: userId,           // Assigned to me
+            isArchived: false,           // Task itself is not archived
+            project: { $in: activeProjectIds } // Belongs to an active project
+        })
+            .populate("project", "title workspace") // Populate project info
+            .sort({ dueDate: 1 }); // Sort by Due Date (Usually better for "My Tasks" than createdAt)
 
         res.status(200).json(tasks);
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return res.status(500).json({
             message: "Internal server error",
         });
     }
 };
-const deleteTask = async (req, res) => {
-    try {
-        const { taskId } = req.params;
 
-        const task = await Task.findById(taskId);
-        if (!task) {
-            return res.status(404).json({ message: "Task not found" });
-        }
-
-        // remove task from project
-        await Project.findByIdAndUpdate(task.project, {
-            $pull: { tasks: taskId },
-        });
-
-        // delete related data
-        await Comment.deleteMany({ task: taskId });
-        await ActivityLog.deleteMany({ resourceId: taskId });
-
-        // delete task
-        await Task.findByIdAndDelete(taskId);
-
-        return res.status(200).json({
-            success: true,
-            taskId,
-            project: task.project,
-        });
-    } catch (error) {
-        console.error("DELETE TASK ERROR:", error);
-        return res.status(500).json({ message: "Delete failed" });
-    }
-};
 const addTaskAttachment = async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -777,38 +649,67 @@ const addTaskAttachment = async (req, res) => {
 const deleteTaskAttachment = async (req, res) => {
     try {
         const { taskId, attachmentId } = req.params;
+        const userId = req.user._id.toString();
 
         const task = await Task.findById(taskId);
-        if (!task) {
-            return res.status(404).json({ message: "Task not found" });
-        }
+        if (!task) return res.status(404).json({ message: "Task not found" });
 
-        // permission check
         const project = await Project.findById(task.project);
-        const isMember = project.members.some(
-            (m) => m.user.toString() === req.user._id.toString()
-        );
-        if (!isMember) {
-            return res.status(403).json({ message: "Not allowed" });
-        }
+        const workspace = await Workspace.findById(project.workspace);
 
-        // ✅ DEFINE IT HERE (IMPORTANT)
-        const attachmentExists = task.attachments.some(
-            (att) => att && att._id && att._id.toString() === attachmentId
+        // 1. Identify Attachment & Uploader
+        const attachment = task.attachments.find(
+            (att) => att._id.toString() === attachmentId
         );
 
-        if (!attachmentExists) {
-            return res.status(404).json({ message: "Attachment not found" });
+        if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+
+        const uploaderId = attachment.uploadedBy.toString();
+
+        // 2. Identify Roles
+        const workspaceOwnerId = workspace.owner.toString();
+
+        // Requester Role
+        let requesterRole = "member";
+        if (userId === workspaceOwnerId) requesterRole = "owner";
+        else {
+            const member = workspace.members.find(m => m.user.toString() === userId);
+            if (member && member.role === "admin") requesterRole = "admin";
         }
 
-        // ✅ NULL-SAFE REMOVE
+        // Uploader Role
+        let uploaderRole = "member";
+        if (uploaderId === workspaceOwnerId) uploaderRole = "owner";
+        else {
+            const member = workspace.members.find(m => m.user.toString() === uploaderId);
+            if (member && member.role === "admin") uploaderRole = "admin";
+        }
+
+        // 3. Permission Logic Matrix
+        let isAllowed = false;
+
+        if (requesterRole === "owner") {
+            // ✅ Owner can delete ANYTHING
+            isAllowed = true;
+        } else if (requesterRole === "admin") {
+            // ✅ Admin can delete Member's or Admin's files
+            // ❌ Admin CANNOT delete Owner's files
+            if (uploaderRole !== "owner") isAllowed = true;
+        } else {
+            // ✅ Member can ONLY delete their own files
+            if (userId === uploaderId) isAllowed = true;
+        }
+
+        if (!isAllowed) {
+            return res.status(403).json({ message: "You do not have permission to delete this attachment" });
+        }
+
+        // 4. Perform Delete
         task.attachments = task.attachments.filter(
-            (att) => att && att._id && att._id.toString() !== attachmentId
+            (att) => att._id.toString() !== attachmentId
         );
 
         await task.save();
-
-        // activity log
         await recordActivity(req.user._id, "removed_attachment", "Task", taskId, {
             description: "removed an attachment",
         });
@@ -820,6 +721,30 @@ const deleteTaskAttachment = async (req, res) => {
     }
 };
 
+const markCommentsAsRead = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const userId = req.user._id;
+
+        // 1. Add current user to 'readBy' for all comments in this task
+        // (Only if they aren't already in the list)
+        await Comment.updateMany(
+            { task: taskId, readBy: { $ne: userId } },
+            { $addToSet: { readBy: userId } }
+        );
+
+        // 2. Trigger Socket Event so others see the Blue Ticks instantly
+        const task = await Task.findById(taskId);
+        if (global.io && task) {
+            global.io.to(task.project.toString()).emit("comments_updated", { taskId });
+        }
+
+        res.status(200).json({ message: "Comments marked as read" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
 export {
     createTask,
@@ -839,5 +764,6 @@ export {
     getMyTasks,
     deleteTask,
     addTaskAttachment,
-    deleteTaskAttachment
+    deleteTaskAttachment,
+    markCommentsAsRead
 };

@@ -52,8 +52,6 @@ router.patch(
     updateProject
 );
 
-
-
 router.patch(
     "/:projectId/archive",
     authMiddleware,

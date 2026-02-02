@@ -2,7 +2,6 @@ import type { ProjectMemberRole, Task, User } from "@/types";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
-import { Download } from "lucide-react";
 import { Checkbox } from "../ui/checkbox";
 import { useUpdateTaskAssigneesMutation } from "@/hooks/use-task";
 import { toast } from "sonner";
@@ -12,11 +11,16 @@ export const TaskAssigneesSelector = ({
     task,
     assignees,
     projectMembers,
+    canEdit,
 }: {
     task: Task;
     assignees: User[];
     projectMembers: { user: User; role: ProjectMemberRole }[];
+    canEdit: boolean;
 }) => {
+    // ✅ FILTER: Remove Owner from the selectable list
+    const filteredMembers = projectMembers.filter(m => (m.role as string) !== "owner");
+
     const [selectedIds, setSelectedIds] = useState<string[]>(
         assignees.map((assignee) => assignee._id)
     );
@@ -24,8 +28,8 @@ export const TaskAssigneesSelector = ({
     const { mutate, isPending } = useUpdateTaskAssigneesMutation();
 
     const handleSelectAll = () => {
-        const allIds = projectMembers.map((m) => m.user._id);
-
+        // Only select from filtered members (excluding owner)
+        const allIds = filteredMembers.map((m) => m.user._id);
         setSelectedIds(allIds);
     };
 
@@ -35,13 +39,11 @@ export const TaskAssigneesSelector = ({
 
     const handleSelect = (id: string) => {
         let newSelected: string[] = [];
-
         if (selectedIds.includes(id)) {
             newSelected = selectedIds.filter((sid) => sid !== id);
         } else {
             newSelected = [...selectedIds, id];
         }
-
         setSelectedIds(newSelected);
     };
 
@@ -60,7 +62,6 @@ export const TaskAssigneesSelector = ({
                     const errMessage =
                         error.response?.data?.message || "Failed to update assignees";
                     toast.error(errMessage);
-                    console.log(error);
                 },
             }
         );
@@ -68,14 +69,13 @@ export const TaskAssigneesSelector = ({
 
     return (
         <div className="mb-6">
-            <h3 className="text-sm font-medium">
-                Assignees
-            </h3>
+            <h3 className="text-sm font-medium">Assignees</h3>
 
             <div className="flex flex-wrap gap-2 mb-2">
                 {selectedIds.length === 0 ? (
                     <span className="text-xs text-muted-foreground">Unassigned</span>
                 ) : (
+                    // Show selected users (even if they are owner, just in case they were already assigned)
                     projectMembers
                         .filter((member) => selectedIds.includes(member.user._id))
                         .map((m) => (
@@ -93,7 +93,6 @@ export const TaskAssigneesSelector = ({
                                     />
                                     <AvatarFallback>{m.user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-
                                 <span className="text-xs text-muted-foreground">
                                     {m.user.name}
                                 </span>
@@ -105,8 +104,9 @@ export const TaskAssigneesSelector = ({
             {/* dropdown */}
             <div className="relative">
                 <button
-                    className="text-sm text-muted-foreground w-full border rounded px-3 py-2 text-left bg-white"
+                    className="text-sm text-muted-foreground w-full border rounded px-3 py-2 text-left bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => setDropDownOpen(!dropDownOpen)}
+                    disabled={!canEdit}
                 >
                     {selectedIds.length === 0
                         ? "Select assignees"
@@ -130,7 +130,8 @@ export const TaskAssigneesSelector = ({
                             </button>
                         </div>
 
-                        {projectMembers.map((m) => (
+                        {/* ✅ USE filteredMembers HERE */}
+                        {filteredMembers.map((m) => (
                             <label
                                 className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
                                 key={m.user._id}
@@ -140,7 +141,6 @@ export const TaskAssigneesSelector = ({
                                     onCheckedChange={() => handleSelect(m.user._id)}
                                     className="mr-2"
                                 />
-
                                 <Avatar className="size-6 mr-1">
                                     <AvatarImage
                                         src={
@@ -151,8 +151,6 @@ export const TaskAssigneesSelector = ({
                                     />
                                     <AvatarFallback>{m.user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-
-
                                 <span>{m.user.name}</span>
                             </label>
                         ))}

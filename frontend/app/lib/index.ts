@@ -7,6 +7,7 @@ export const publicRoutes = [
     "/verify-email",
     "/reset-password",
     "/forgot-password",
+    "/workspace-invite",
     "*",
 ];
 

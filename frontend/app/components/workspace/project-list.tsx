@@ -5,7 +5,6 @@ import { ProjectCard } from "../project/project-card";
 interface ProjectListProps {
     workspaceId: string;
     projects: Project[];
-
     onCreateProject: () => void;
 }
 
@@ -27,12 +26,18 @@ export const ProjectList = ({
                     />
                 ) : (
                     projects.map((project) => {
-                        const totalTasks = project.tasks.length;
+                        // ✅ FIX: Filter out archived tasks first
+                        const activeTasks = project.tasks.filter((task) => !task.isArchived);
 
-                        const completedTasks = project.tasks.filter(
+                        // 1. Calculate Total (only active tasks)
+                        const totalTasks = activeTasks.length;
+
+                        // 2. Calculate Completed (only active tasks that are "Done")
+                        const completedTasks = activeTasks.filter(
                             (task) => task.status === "Done"
                         ).length;
 
+                        // 3. Calculate Progress
                         const projectProgress =
                             totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 

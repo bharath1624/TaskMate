@@ -3,7 +3,7 @@ import { WorkspaceAvatar } from "./workspace-avatar";
 import { Button } from "../ui/button";
 import { Plus, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { useAuth } from "@/provider/auth-context";
 
 interface WorkspaceHeaderProps {
     workspace: Workspace;
@@ -23,6 +23,27 @@ export const WorkspaceHeader = ({
     onCreateProject,
     onInviteMember,
 }: WorkspaceHeaderProps) => {
+    const { user } = useAuth();
+
+    // 🔒 Permission Logic
+    const currentMember = members.find(
+        (m) => m.user._id === user?._id
+    );
+
+    // Only Owners/Admins see buttons
+    const hasWritePermission =
+        currentMember?.role === "owner" ||
+        currentMember?.role === "admin";
+
+    // 🔧 FIX: Robust Image Helper
+    const getImageUrl = (path: string | undefined) => {
+        if (!path) return undefined;
+        if (path.startsWith("http")) return path;
+        const BASE = "http://localhost:5000"; // Points to Root (No /api-v1)
+        const cleanPath = path.startsWith("/") ? path : `/${path}`;
+        return `${BASE}${cleanPath}`;
+    };
+
     return (
         <div className="space-y-8 pt-5">
             <div className="space-y-3">
@@ -38,14 +59,19 @@ export const WorkspaceHeader = ({
                     </div>
 
                     <div className="flex items-center gap-3 justify-between md:justify-start mb-4 md:mb-0">
-                        <Button variant={"outline"} onClick={onInviteMember}>
-                            <UserPlus className="size-4 mr-2" />
-                            Invite
-                        </Button>
-                        <Button onClick={onCreateProject}>
-                            <Plus className="size-4 mr-2" />
-                            Create Project
-                        </Button>
+                        {/* 🔒 Locked Buttons */}
+                        {hasWritePermission && (
+                            <>
+                                <Button variant={"outline"} onClick={onInviteMember}>
+                                    <UserPlus className="size-4 mr-2" />
+                                    Invite
+                                </Button>
+                                <Button onClick={onCreateProject}>
+                                    <Plus className="size-4 mr-2" />
+                                    Create Project
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -64,19 +90,15 @@ export const WorkspaceHeader = ({
                         {members.map((member) => (
                             <Avatar
                                 key={member._id}
-                                className="relative h-8 w-8 rounded-full  border-2 border-background overflow-hidden"
-                                title={member.user.name}
+                                className="relative h-8 w-8 rounded-full border-2 border-background overflow-hidden"
+                                title={`${member.user.name} (${member.role})`}
                             >
+                                {/* 🔧 Apply Fixed Image Helper Here */}
                                 <AvatarImage
-                                    src={
-                                        member.user.profilePicture
-                                            ? `${BACKEND_URL}${member.user.profilePicture}`
-                                            : undefined
-                                    }
+                                    src={getImageUrl(member.user.profilePicture)}
                                     alt={member.user.name}
                                 />
-
-                                <AvatarFallback>{member.user.name.charAt(0)}</AvatarFallback>
+                                <AvatarFallback>{member.user.name.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                         ))}
                     </div>
