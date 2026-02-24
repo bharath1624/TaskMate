@@ -71,12 +71,15 @@ const Members = () => {
 
     if (!data || !workspaceId) return <div>No workspace found</div>;
 
-    const filteredMembers = data?.members?.filter(
-        (member) =>
-            member.user.name.toLowerCase().includes(search.toLowerCase()) ||
-            member.user.email.toLowerCase().includes(search.toLowerCase()) ||
-            member.role?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredMembers = data?.members
+        ?.filter((member) => member.user) // remove null users
+        .filter(
+            (member) =>
+                member.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+                member.user?.email?.toLowerCase().includes(search.toLowerCase()) ||
+                member.role?.toLowerCase().includes(search.toLowerCase())
+        ) || [];
+
 
     const getRoleBadgeStyle = (role?: string) => {
         if (role === "owner") {
@@ -127,7 +130,7 @@ const Members = () => {
 
                         <CardContent>
                             <div className="divide-y">
-                                {filteredMembers.map((member) => (
+                                {filteredMembers?.map((member) => (
                                     <div
                                         key={member.user._id}
                                         className="flex flex-col md:flex-row items-center justify-between p-4 gap-3"
@@ -182,7 +185,7 @@ const Members = () => {
                 {/* BOARD VIEW */}
                 <TabsContent value="board">
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {filteredMembers.map((member) => (
+                        {filteredMembers?.map((member) => (
                             <Card key={member.user._id} className="">
                                 <CardContent className="p-6 flex flex-col items-center text-center">
                                     <div className="relative mb-4">

@@ -79,6 +79,7 @@ const createTask = async (req, res) => {
 
         if (normalizedAssignees.length > 0) {
             for (const userId of normalizedAssignees) {
+                if (userId.toString() === req.user._id.toString()) continue;
                 await Notification.create({
                     user: userId,
                     title: "Task assigned",
@@ -221,20 +222,71 @@ const updateTaskStatus = async (req, res) => {
 
 const updateTaskAssignees = async (req, res) => {
     try {
-        const { taskId } = req.params; const { assignees } = req.body;
+        const { taskId } = req.params;
+        const { assignees } = req.body;
+
         const task = await Task.findById(taskId);
         if (!task) return res.status(404).json({ message: "Task not found" });
 
         const { isAuthorized } = await checkTaskAccess(req, task.project);
-        if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
+        if (!isAuthorized)
+            return res.status(403).json({ message: "Not authorized" });
 
-        task.assignees = assignees;
+        // ✅ 1. Store OLD assignees
+        const oldAssignees = task.assignees.map(id => id.toString());
+
+        // ✅ 2. Normalize new assignees
+        const newAssignees = Array.isArray(assignees)
+            ? assignees.map(id => id.toString())
+            : [];
+
+        // ✅ 3. Update task
+        task.assignees = newAssignees;
         await task.save();
-        await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task assignees` });
 
-        if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
+        // ✅ 4. Detect ONLY newly added users
+        const addedUsers = newAssignees.filter(
+            id => !oldAssignees.includes(id)
+        );
+
+        // ✅ 5. Send notification (skip self)
+        for (const userId of addedUsers) {
+            if (userId === req.user._id.toString()) continue; // ❌ Skip self
+
+            await Notification.create({
+                user: userId,
+                title: "Task assigned",
+                message: `You were assigned to task "${task.title}"`,
+                targetType: "task",
+                targetId: task._id,
+                projectId: task.project,
+            });
+
+            if (global.io) {
+                global.io.to(userId).emit("notification", {
+                    title: "Task assigned",
+                    message: `You were assigned to task "${task.title}"`,
+                });
+            }
+        }
+
+        await recordActivity(
+            req.user._id,
+            "updated_task",
+            "Task",
+            taskId,
+            { description: `updated task assignees` }
+        );
+
+        if (global.io)
+            global.io.to(task.project.toString()).emit("task_updated", task);
+
         res.status(200).json(task);
-    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
 };
 
 const updateTaskPriority = async (req, res) => {
@@ -359,7 +411,9 @@ const addComment = async (req, res) => {
             });
         }
 
-        const project = await Project.findById(task.project).populate("members.user");
+        const project = await Project.findById(task.project)
+            .populate("members.user")
+            .populate("workspace"); // make sure workspace is populated
 
         if (!project) {
             return res.status(404).json({
@@ -371,12 +425,14 @@ const addComment = async (req, res) => {
             (member) => member.user._id.toString() === userId.toString()
         );
 
-        if (!isMember) {
+        const isOwner =
+            project.workspace?.owner?.toString() === userId.toString();
+
+        if (!isMember && !isOwner) {
             return res.status(403).json({
-                message: "You are not a member of this project",
+                message: "You are not allowed to comment on this project",
             });
         }
-
         const newComment = await Comment.create({
             text,
             task: taskId,
@@ -556,29 +612,54 @@ const achievedTask = async (req, res) => {
 const getMyTasks = async (req, res) => {
     try {
         const userId = req.user._id;
+        const { workspaceId } = req.query; // ✅ Extract workspaceId from URL query
 
-        // 1. Find all ACTIVE projects first
-        // We only want tasks that belong to projects that are NOT archived.
-        const activeProjects = await Project.find({
-            isArchived: false,
-            // Optional: You can also ensure the user is still a member of these projects
-            // members: { $elemMatch: { user: userId } } 
+        if (!workspaceId) {
+            return res.status(400).json({ message: "Workspace ID is required" });
+        }
+
+        // 1. Verify user belongs to THIS workspace and check their role
+        const workspace = await Workspace.findById(workspaceId);
+        if (!workspace) {
+            return res.status(404).json({ message: "Workspace not found" });
+        }
+
+        const isOwner = workspace.owner.toString() === userId.toString();
+        const member = workspace.members.find(m => m.user.toString() === userId.toString());
+        const isAdmin = member && member.role === "admin";
+
+        if (!isOwner && !member) {
+            return res.status(403).json({ message: "Not authorized for this workspace" });
+        }
+
+        // 2. Find projects ONLY for this specific workspace
+        const projects = await Project.find({
+            workspace: workspaceId,
+            isArchived: false
         }).select("_id");
 
-        const activeProjectIds = activeProjects.map(p => p._id);
+        const projectIds = projects.map(p => p._id);
 
-        // 2. Find tasks assigned to me that match our criteria
-        const tasks = await Task.find({
-            assignees: userId,           // Assigned to me
-            isArchived: false,           // Task itself is not archived
-            project: { $in: activeProjectIds } // Belongs to an active project
-        })
-            .populate("project", "title workspace") // Populate project info
-            .sort({ dueDate: 1 }); // Sort by Due Date (Usually better for "My Tasks" than createdAt)
+        // 3. Query Tasks based on role
+        let taskQuery = {
+            project: { $in: projectIds },
+            isArchived: false
+        };
+
+        // If the user is just a regular member, restrict them to ONLY tasks they are assigned to
+        if (!isOwner && !isAdmin) {
+            taskQuery.assignees = userId;
+        }
+        // (Owners and Admins bypass this if-statement, so they get ALL tasks in the workspace)
+
+        const tasks = await Task.find(taskQuery)
+            .populate("project", "title workspace")
+            .populate("assignees", "name profilePicture")
+            .sort({ dueDate: 1 });
 
         res.status(200).json(tasks);
     } catch (error) {
-        console.error(error);
+        console.error("GET MY TASKS ERROR:", error);
         return res.status(500).json({
             message: "Internal server error",
         });

@@ -21,12 +21,16 @@ import {
     ChartTooltipContent,
 } from "../ui/chart";
 import {
+    Area,
+    AreaChart,
     Bar,
     BarChart,
     CartesianGrid,
     Cell,
     Pie,
     PieChart,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
 } from "recharts";
@@ -79,106 +83,113 @@ export const StatisticsCharts = ({
                         <CardTitle className="text-base font-medium">
                             Task Trends
                         </CardTitle>
-                        <CardDescription>Daily task status</CardDescription>
+                        <CardDescription>Daily task activity overview</CardDescription>
                     </div>
                     <ChartLine className="size-5 text-muted-foreground" />
                 </CardHeader>
-
-                <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
+                <CardContent>
                     {hasTaskActivity ? (
-                        <div className="flex gap-8 items-center min-w-[400px]">
-                            {/* CHART */}
-                            <div className="flex-1">
-                                <ChartContainer
-                                    className="h-80"
-                                    config={{
-                                        completed: { color: "#10b981" },
-                                        inProgress: { color: "#3b82f6" },
-                                        todo: { color: "#6b7280" },
-                                    }}
-                                >
-                                    <BarChart
-                                        data={normalizedTaskTrendsData}
-                                        layout="vertical"
-                                        barSize={20}
-                                        barCategoryGap={10}
-                                    >
-                                        <YAxis
-                                            dataKey="name"
-                                            type="category"
-                                            tickLine={false}
-                                            axisLine={false}
-                                            fontSize={12}
-                                            width={80}
-                                            interval={0}
-                                            allowDuplicatedCategory={false}
-                                        />
+                        <div className="h-80 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={normalizedTaskTrendsData}>
 
-                                        <XAxis
-                                            type="number"
-                                            allowDecimals={false}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
+                                    {/* Grid */}
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        vertical={false}
+                                        strokeOpacity={0.2}
+                                    />
 
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            horizontal={false}
-                                        />
+                                    {/* X Axis */}
+                                    <XAxis
+                                        dataKey="name"
+                                        tickLine={false}
+                                        axisLine={{ strokeWidth: 0.3, stroke: "hsl(var(--border))" }}
+                                        fontSize={12}
+                                        interval={0}
+                                        tickFormatter={(value: string) => value.slice(0, 3)} // 👈 THIS LINE
+                                    />
 
-                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                    {/* Y Axis */}
+                                    <YAxis
+                                        tickLine={false}
+                                        axisLine={false}
+                                        allowDecimals={false}
+                                        fontSize={12}
+                                    />
 
-                                        {/* STACKED BARS */}
-                                        <Bar
-                                            dataKey="completed"
-                                            stackId="tasks"
-                                            fill="#10b981"
-                                            radius={[0, 4, 4, 0]}
-                                            name="Completed"
-                                        />
-                                        <Bar
-                                            dataKey="inProgress"
-                                            stackId="tasks"
-                                            fill="#3b82f6"
-                                            name="In Progress"
-                                        />
-                                        <Bar
-                                            dataKey="todo"
-                                            stackId="tasks"
-                                            fill="#6b7280"
-                                            name="To Do"
-                                        />
-                                    </BarChart>
-                                </ChartContainer>
-                            </div>
+                                    {/* Tooltip */}
+                                    <Tooltip
+                                        contentStyle={{
+                                            borderRadius: "8px",
+                                            border: "1px solid hsl(var(--border))",
+                                            background: "hsl(var(--background))",
+                                            padding: "6px 8px",   // ⬅ smaller padding
+                                            fontSize: "14px",     // ⬅ smaller text
+                                        }}
+                                        itemStyle={{
+                                            fontSize: "14px",     // ⬅ reduce label size
+                                        }}
+                                        labelStyle={{
+                                            fontSize: "14px",     // ⬅ reduce date/title size
+                                        }}
+                                    />
 
-                            {/* RIGHT-SIDE LEGEND */}
-                            <div className="space-y-3 text-sm">
-                                <div className="flex items-center gap-3">
-                                    <span className="h-3 w-3 boarder-sm bg-emerald-500" />
-                                    <span className="font-medium">Completed</span>
-                                </div>
+                                    {/* COMPLETED */}
+                                    <Area
+                                        type="monotone"
+                                        dataKey="completed"
+                                        stroke="#10b981"
+                                        fill="#10b981"
+                                        fillOpacity={0.15}
+                                        strokeWidth={2}
+                                        name="Completed"
+                                    />
 
-                                <div className="flex items-center gap-3">
-                                    <span className="h-3 w-3 boarder-sm bg-blue-500" />
-                                    <span className="font-medium">In Progress</span>
-                                </div>
+                                    {/* IN PROGRESS */}
+                                    <Area
+                                        type="monotone"
+                                        dataKey="inProgress"
+                                        stroke="#3b82f6"
+                                        fill="#3b82f6"
+                                        fillOpacity={0.15}
+                                        strokeWidth={2}
+                                        name="In Progress"
+                                    />
 
-                                <div className="flex items-center gap-3">
-                                    <span className="h-3 w-3 boarder-sm bg-gray-500" />
-                                    <span className="font-medium">To Do</span>
-                                </div>
-                            </div>
+                                    {/* TODO */}
+                                    <Area
+                                        type="monotone"
+                                        dataKey="todo"
+                                        stroke="#6b7280"
+                                        fill="#6b7280"
+                                        fillOpacity={0.1}
+                                        strokeWidth={2}
+                                        name="To Do"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     ) : (
-                        <div className="h-[360px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                        <div className="h-80 flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
                             <ChartLine className="size-8 opacity-40" />
                             <p className="font-medium">No task activity</p>
                         </div>
                     )}
                 </CardContent>
+                {/* LEGEND BELOW CHART */}
+                <div className="flex justify-center gap-4 mt-6 text-xs">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+                        Completed
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/30">
+                        In Progress
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-gray-500/10 text-gray-500 border border-gray-500/30">
+                        To Do
+                    </span>
+                </div>
             </Card>
-
 
             {/* project status  */}
 
@@ -380,5 +391,6 @@ export const StatisticsCharts = ({
                 </CardContent>
             </Card>
         </div>
+
     );
 };

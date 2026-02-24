@@ -133,9 +133,6 @@ const getProjectTasks = async (req, res) => {
 
         // 4. Task Filtering
         let query = { project: projectId, isArchived: false };
-        if (!canEdit) {
-            query.assignees = req.user._id;
-        }
 
         const tasks = await Task.find(query).populate("assignees", "name profilePicture").sort({ createdAt: -1 });
 

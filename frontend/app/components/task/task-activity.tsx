@@ -6,6 +6,7 @@ import { getActivityIcon } from "./task-icon";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { History } from "lucide-react";
 
 export const TaskActivity = ({ resourceId }: { resourceId: string }) => {
     const { data, isPending } = useQuery({
@@ -79,8 +80,11 @@ export const TaskActivity = ({ resourceId }: { resourceId: string }) => {
                     ))}
 
                     {filteredData.length === 0 && (
-                        <div className="text-center text-muted-foreground text-sm py-8">
-                            No activity recorded yet.
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground text-sm py-12 gap-3">
+                            <div className="p-3 rounded-full bg-muted">
+                                <History className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                            <p className="font-medium">No activity entries are available</p>
                         </div>
                     )}
                 </div>

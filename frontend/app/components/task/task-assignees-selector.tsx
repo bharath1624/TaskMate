@@ -81,7 +81,7 @@ export const TaskAssigneesSelector = ({
                         .map((m) => (
                             <div
                                 key={m.user._id}
-                                className="flex items-center bg-gray-100 rounded px-2 py-1"
+                                className="flex items-center bg-muted rounded px-2 py-1"
                             >
                                 <Avatar className="size-6 mr-1">
                                     <AvatarImage
@@ -93,7 +93,7 @@ export const TaskAssigneesSelector = ({
                                     />
                                     <AvatarFallback>{m.user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-foreground">
                                     {m.user.name}
                                 </span>
                             </div>
@@ -104,7 +104,7 @@ export const TaskAssigneesSelector = ({
             {/* dropdown */}
             <div className="relative">
                 <button
-                    className="text-sm text-muted-foreground w-full border rounded px-3 py-2 text-left bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-sm text-foreground w-full border bg-card rounded px-3 py-2 text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => setDropDownOpen(!dropDownOpen)}
                     disabled={!canEdit}
                 >
@@ -114,7 +114,8 @@ export const TaskAssigneesSelector = ({
                 </button>
 
                 {dropDownOpen && (
-                    <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 mt-1 w-full bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+
                         <div className="flex justify-between px-2 py-1 border-b">
                             <button
                                 className="text-xs text-blue-600"
@@ -133,7 +134,7 @@ export const TaskAssigneesSelector = ({
                         {/* ✅ USE filteredMembers HERE */}
                         {filteredMembers.map((m) => (
                             <label
-                                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
+                                className="flex items-center px-3 py-2 cursor-pointer hover:bg-muted"
                                 key={m.user._id}
                             >
                                 <Checkbox

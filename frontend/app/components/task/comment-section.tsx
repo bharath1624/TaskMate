@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { Loader } from "../loader";
 import { useAuth } from "@/provider/auth-context";
 import { cn } from "@/lib/utils";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, MessageSquareText } from "lucide-react";
 import { socket } from "@/lib/socket";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -147,7 +147,7 @@ export const CommentSection = ({
 
     return (
         <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-bold">Comments</h3>
+            <h3 className="text-lg font-bold">Discussion</h3>
             <div className="bg-card rounded-lg p-6 shadow-sm flex flex-col h-[500px] relative">
                 {/* ... (Scroll Area code remains same) ... */}
                 <div
@@ -188,7 +188,11 @@ export const CommentSection = ({
                                 );
                             })
                         ) : (
-                            <div className="flex items-center justify-center py-8 h-full text-muted-foreground text-sm">Start the conversation</div>
+                            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm">
+                                <MessageSquareText className="size-7 mb-2 opacity-60 justify-center" />
+                                <p>Start discussion to move work forward</p>
+                            </div>
+
                         )}
                     </div>
                 </div>
@@ -212,7 +216,7 @@ export const CommentSection = ({
                             })}
                         </div>
                     )}
-                    <Textarea placeholder="Type a message... (@ to mention)" value={newComment} onChange={handleInputChange} className="min-h-[50px] resize-none rounded-2xl px-4 py-3" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { if (showMentions) setShowMentions(false); else { e.preventDefault(); handleAddComment(); } } }} />
+                    <Textarea value={newComment} onChange={handleInputChange} className="min-h-[50px] resize-none rounded-2xl px-4 py-3" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { if (showMentions) setShowMentions(false); else { e.preventDefault(); handleAddComment(); } } }} />
                     <div className="flex justify-end mt-2">
                         <Button size="sm" disabled={!newComment.trim() || isPending} onClick={handleAddComment} className="rounded-full px-6 h-9">{isPending ? "..." : "Send"}</Button>
                     </div>

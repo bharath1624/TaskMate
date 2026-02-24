@@ -7,6 +7,8 @@ import {
     Layers,
     LayoutDashboard,
     ListCheck,
+    PanelLeftClose,
+    PanelRightClose,
     Settings,
     Users,
 } from "lucide-react";
@@ -89,34 +91,51 @@ export const SidebarComponent = ({
     return (
         <div
             className={cn(
-                "flex flex-col border-r bg-sidebar transition-all duration-300",
+                "flex flex-col border-r bg-sidebar transition-all duration-300 h-screen",
                 isCollapsed ? "w-16 md:w-20" : "w-16 md:w-60"
             )}
         >
-            <div className="flex h-14 items-center border-b px-4 mb-4">
-                <Link to="/dashboard" className="flex items-center">
-                    {!isCollapsed && (
-                        <div className="flex items-center gap-2">
-                            <Layers className="size-6 text-blue-600" />
-                            <span className="font-semibold text-xl hidden md:block">
-                                TaskMate
-                            </span>
-                        </div>
+            <div className="relative flex h-14 items-center border-b px-4">
+                {/* Logo */}
+                <Link
+                    to="/dashboard"
+                    className={cn(
+                        "flex items-center gap-2 transition-all duration-300",
+                        isCollapsed ? "justify-center w-full" : ""
                     )}
-
-                    {isCollapsed && <Layers className="size-6 text-blue-600" />}
+                >
+                    <Layers className="size-6 text-blue-600 shrink-0" />
+                    {!isCollapsed && (
+                        <span className="font-semibold text-xl hidden md:block">
+                            TaskMate
+                        </span>
+                    )}
                 </Link>
 
+                {/* Floating Toggle Button */}
                 <Button
-                    variant={"ghost"}
+                    variant="ghost"
                     size="icon"
-                    className="ml-auto hidden md:block"
                     onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="
+    hidden md:flex
+    absolute -right-3
+    top-1/2 -translate-y-1/2
+    rounded-full
+    border
+    shadow-md
+    transition-all duration-200
+    hover:scale-105 active:scale-95
+    text-white
+  "
+                    style={{
+                        backgroundColor: "oklch(0.488 0.243 264.376)",
+                    }}
                 >
                     {isCollapsed ? (
-                        <ChevronsRight className="size-4" />
+                        <PanelRightClose className="size-4" />
                     ) : (
-                        <ChevronsLeft className="size-4" />
+                        <PanelLeftClose className="size-4" />
                     )}
                 </Button>
             </div>

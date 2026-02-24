@@ -29,9 +29,18 @@ const getWorkspaces = async (req, res) => {
 const getWorkspaceDetails = async (req, res) => {
     try {
         const { workspaceId } = req.params;
-        const workspace = await Workspace.findById({ _id: workspaceId }).populate("members.user", "name email profilePicture");
-        if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+        const workspace = await Workspace.findById(workspaceId)
+            .populate("members.user", "name email profilePicture");
+
+        if (!workspace) {
+            return res.status(404).json({ message: "Workspace not found" });
+        }
+
+        // 🔥 REMOVE NULL USERS (DANGLING REFERENCES)
+        workspace.members = workspace.members.filter(member => member.user !== null);
+
         res.status(200).json(workspace);
+
     } catch (error) { }
 };
 
@@ -64,6 +73,8 @@ const getWorkspaceProjects = async (req, res) => {
         }).populate("members.user", "name email profilePicture");
 
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+        workspace.members = workspace.members.filter(member => member.user !== null);
+
 
         // 👑 GOD MODE CHECK
         const isWorkspaceOwner = workspace.owner.toString() === userId;
@@ -102,6 +113,7 @@ const getWorkspaceStats = async (req, res) => {
 
         const workspace = await Workspace.findById(workspaceId);
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+        workspace.members = workspace.members.filter(member => member.user !== null);
 
         const isMember = workspace.members.some(member => member.user.toString() === userId);
         if (!isMember) return res.status(403).json({ message: "You are not a member of this workspace" });
@@ -144,13 +156,13 @@ const getWorkspaceStats = async (req, res) => {
 
         // Trends & Stats Data (Standard)
         const taskTrendsData = [
-            { name: "Sun", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Mon", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Tue", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Wed", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Thu", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Fri", completed: 0, inProgress: 0, todo: 0 },
-            { name: "Sat", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Sunday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Monday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Tuesday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Wednesday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Thursday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Friday", completed: 0, inProgress: 0, todo: 0 },
+            { name: "Saturday", completed: 0, inProgress: 0, todo: 0 },
         ];
         const last7Days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return d; }).reverse();
         for (const project of projects) {
@@ -158,7 +170,7 @@ const getWorkspaceStats = async (req, res) => {
                 const taskDate = new Date(task.updatedAt);
                 const dayInDate = last7Days.findIndex(d => d.getDate() === taskDate.getDate() && d.getMonth() === taskDate.getMonth());
                 if (dayInDate !== -1) {
-                    const dayName = last7Days[dayInDate].toLocaleDateString("en-US", { weekday: "short" });
+                    const dayName = last7Days[dayInDate].toLocaleDateString("en-US", { weekday: "long" });
                     const dayData = taskTrendsData.find(d => d.name === dayName);
                     if (dayData) {
                         if (task.status === "Done") dayData.completed++;
@@ -318,7 +330,46 @@ const removeMemberFromWorkspace = async (req, res) => { /* Same as your old code
         res.status(200).json({ message: "Member removed" });
     } catch (e) { res.status(500).json({ message: "Error" }); }
 };
+export const getWorkspaceTasks = async (req, res) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = req.user._id;
 
+        // 1. Verify workspace exists and user is a member/owner
+        const workspace = await Workspace.findById(workspaceId);
+        if (!workspace) {
+            return res.status(404).json({ message: "Workspace not found" });
+        }
+
+        const isOwner = workspace.owner.toString() === userId.toString();
+        const isMember = workspace.members.some(m => m.user.toString() === userId.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: "Not authorized to view this workspace" });
+        }
+
+        // 2. Find all active projects in this workspace
+        const projects = await Project.find({
+            workspace: workspaceId,
+            isArchived: false
+        }).select("_id");
+
+        const projectIds = projects.map(p => p._id);
+
+        // 3. Find all active tasks belonging to these projects
+        const tasks = await Task.find({
+            project: { $in: projectIds },
+            isArchived: false
+        })
+            .populate("project", "title workspace") // Populate project info needed for navigation
+            .populate("assignees", "name profilePicture");
+
+        res.status(200).json(tasks);
+    } catch (error) {
+        console.error("GET WORKSPACE TASKS ERROR:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
 export {
     createWorkspace,
     getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats,

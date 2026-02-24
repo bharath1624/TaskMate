@@ -14,6 +14,7 @@ import {
     useGetWorkspaceDetailsQuery,
 } from "@/hooks/use-workspace";
 import type { Workspace } from "@/types";
+import { FolderX } from "lucide-react";
 import React from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -28,7 +29,25 @@ const WorkspaceInvite = () => {
     const navigate = useNavigate();
 
     if (!workspaceId) {
-        return <div>Workspace not found</div>;
+        return (
+            <div className="flex items-center justify-center h-screen bg-background px-4">
+                <Card className="max-w-md w-full text-center">
+                    <CardHeader className="flex flex-col items-center gap-4">
+
+                        {/* Icon */}
+                        <div className="p-4 rounded-full bg-muted">
+                            <FolderX className="w-10 h-10 text-muted-foreground" />
+                        </div>
+
+                        <CardTitle>Workspace Not Found</CardTitle>
+                        <CardDescription>
+                            The workspace you are trying to access does not exist
+                            or the link may be invalid.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        );
     }
 
     const { data: workspace, isLoading } = useGetWorkspaceDetailsQuery(

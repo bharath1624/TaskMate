@@ -2,7 +2,7 @@ import express from "express";
 import { validateRequest } from "zod-express-middleware";
 import { inviteMemberSchema, tokenSchema, workspaceSchema } from "../libs/validate-schema.js";
 import authMiddleware from "../middleware/auth-middleware.js";
-import { createWorkspace, getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats, getArchivedData, acceptInviteByToken, inviteUserToWorkspace, acceptGenerateInvite, updateWorkspace, transferWorkspaceOwnership, deleteWorkspace, removeMemberFromWorkspace } from "../controllers/workspace.js";
+import { createWorkspace, getWorkspaces, getWorkspaceDetails, getWorkspaceProjects, getWorkspaceStats, getArchivedData, acceptInviteByToken, inviteUserToWorkspace, acceptGenerateInvite, updateWorkspace, transferWorkspaceOwnership, deleteWorkspace, removeMemberFromWorkspace, getWorkspaceTasks } from "../controllers/workspace.js";
 import { z } from "zod";
 import optionalAuthMiddleware from "../middleware/optional-auth-middleware.js";
 
@@ -75,6 +75,6 @@ router.get("/:workspaceId", authMiddleware, getWorkspaceDetails);
 router.get("/:workspaceId/projects", authMiddleware, getWorkspaceProjects);
 router.get("/:workspaceId/stats", authMiddleware, getWorkspaceStats);
 router.get("/:workspaceId/archived", authMiddleware, getArchivedData);
-
+router.get("/:workspaceId/tasks", authMiddleware, getWorkspaceTasks);
 
 export default router;

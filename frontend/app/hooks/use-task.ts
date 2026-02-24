@@ -69,7 +69,6 @@ export const useUpdateTaskStatusMutation = () => {
     });
 };
 
-
 export const useUpdateTaskDescriptionMutation = () => {
     const queryClient = useQueryClient();
 
@@ -236,11 +235,15 @@ export const useAchievedTaskMutation = () => {
         },
     });
 };
-
-export const useGetMyTasksQuery = () => {
+// ✅ Make sure workspaceId is accepted as a parameter
+export const useGetMyTasksQuery = (workspaceId?: string | null) => {
     return useQuery({
-        queryKey: ["my-tasks", "user"],
-        queryFn: () => fetchData("/tasks/my-tasks"),
+        // Add workspaceId to the query key so it triggers a refetch when changed
+        queryKey: ["my-tasks", workspaceId],
+        // ✅ Add the query string to the URL!
+        queryFn: () => fetchData(`/tasks/my-tasks?workspaceId=${workspaceId}`),
+        // ✅ Prevent it from running if workspaceId is missing or undefined
+        enabled: !!workspaceId,
     });
 };
 
@@ -314,4 +317,10 @@ export const useMarkCommentsReadMutation = () => {
         },
     });
 };
-
+export const useGetWorkspaceTasksQuery = (workspaceId: string | undefined) => {
+    return useQuery({
+        queryKey: ["workspace-tasks", workspaceId],
+        queryFn: () => fetchData(`/workspaces/${workspaceId}/tasks`),
+        enabled: !!workspaceId, // Only runs when workspaceId exists
+    });
+};

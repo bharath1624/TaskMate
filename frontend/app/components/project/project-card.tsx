@@ -1,4 +1,3 @@
-
 import type { Project } from "@/types";
 import { Link } from "react-router";
 import {
@@ -11,8 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { getTaskStatusColor } from "@/lib";
 import { Progress } from "../ui/progress";
-import { format } from "date-fns";
-import { CalendarDays } from "lucide-react";
+import { format, isPast, isToday } from "date-fns"; // ✅ Import date helpers
+import { CalendarDays, ClockAlert } from "lucide-react"; // ✅ Import Alert Icon
 
 interface ProjectCardProps {
     project: Project;
@@ -25,49 +24,78 @@ export const ProjectCard = ({
     progress,
     workspaceId,
 }: ProjectCardProps) => {
+
+    // 1. Calculate Overdue Status
+    const dueDate = project.dueDate ? new Date(project.dueDate) : null;
+    const isCompleted = ["Completed", "Done"].includes(project.status);
+
+    // It is overdue if: Date exists + Date is in past + Not Today + Not Completed
+    const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isCompleted;
+    const isDueToday = dueDate && isToday(dueDate) && !isCompleted;
+
     return (
         <Link to={`/workspaces/${workspaceId}/projects/${project._id}`}>
-            <Card className="transition-all duration-300 hover:shadow-md hover:translate-y-1">
+            <Card className="transition-all duration-300 hover:shadow-md hover:translate-y-1 h-full flex flex-col justify-between">
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>{project.title}</CardTitle>
+                        <CardTitle className="line-clamp-1 text-lg">{project.title}</CardTitle>
                         <span
                             className={cn(
-                                "text-xs rounded-full",
+                                "text-xs px-2 py-1 rounded-full border font-medium",
                                 getTaskStatusColor(project.status)
                             )}
                         >
                             {project.status}
                         </span>
                     </div>
-                    <CardDescription className="line-clamp-2">
-                        {project.description || "No description"}
+                    <CardDescription className="line-clamp-2 mt-2 h-10">
+                        {project.description || "No description provided."}
                     </CardDescription>
                 </CardHeader>
+
                 <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-2">
+                        {/* PROGRESS BAR */}
                         <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                                <span>Progress</span>
-                                <span>{progress}%</span>
+                            <div className="flex justify-between text-xs font-large">
+                                <span className={isOverdue ? "text-red-600" : "text-muted-foreground"}>
+                                    {isOverdue ? "Progress" : "Progress"}
+                                </span>
+                                <span className={isOverdue ? "text-red-600" : ""}>{progress}%</span>
                             </div>
 
-                            <Progress value={progress} className="h-2" />
+                            {/* ✅ Turn Progress Bar RED if overdue */}
+                            <Progress
+                                value={progress}
+                                className={cn(
+                                    "h-2",
+                                    isOverdue ? "[&>div]:bg-red-600 bg-red-100" : ""
+                                )}
+                            />
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center text-sm gap-2 text-muted-foreground">
+                        <div className="flex items-center justify-between pt-2">
+                            {/* Task Count */}
+                            <div className="flex items-center text-xs gap-2 text-muted-foreground">
                                 <span>{project.tasks.length}</span>
                                 <span>Tasks</span>
                             </div>
-                            {project.dueDate && (
-                                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1">
-                                        <CalendarDays className="w-4 h-4" />
-                                        <span>Due Date</span>
+
+                            {/* DUE DATE DISPLAY */}
+                            {dueDate && (
+                                <div className={cn(
+                                    "flex flex-col items-end gap-0.5 text-xs",
+                                    isOverdue ? "text-red-600" : isDueToday ? "text-amber-600" : "text-muted-foreground"
+                                )}>
+                                    <div className="flex items-center gap-1 opacity-80">
+                                        {isOverdue ? <ClockAlert className="w-3.5 h-3.5" /> : <CalendarDays className="w-3.5 h-3.5" />}
+                                        <span>{isOverdue ? "Overdue" : isDueToday ? "Due Today" : "Due Date"}</span>
                                     </div>
-                                    <span className="font-medium text-muted-foreground">
-                                        {format(new Date(project.dueDate), "MMM d, yyyy")}
+                                    <span className={cn(
+                                        "font-medium",
+                                        isOverdue ? "font-bold" : ""
+                                    )}>
+                                        {format(dueDate, "MMM d, yyyy")}
                                     </span>
                                 </div>
                             )}

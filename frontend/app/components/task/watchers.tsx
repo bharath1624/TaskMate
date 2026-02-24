@@ -1,5 +1,6 @@
 import type { User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Eye, Users } from "lucide-react";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 export const Watchers = ({ watchers }: { watchers: User[] }) => {
@@ -27,7 +28,10 @@ export const Watchers = ({ watchers }: { watchers: User[] }) => {
                         </div>
                     ))
                 ) : (
-                    <p className="text-sm text-muted-foreground">No watchers</p>
+                    <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-sm">
+                        <Users className="w-6 h-6 mb-2 opacity-60" />
+                        No active watchers
+                    </div>
                 )}
             </div>
         </div>

@@ -77,7 +77,7 @@ const ProjectSettings = () => {
     }, [data]);
 
     if (isLoading || isDeleting) return <Loader />;
-    if (!data?.project) return <div className="p-8">Project not found</div>;
+    if (!data?.project) return <div className="p-8 text-foreground">Project not found</div>;
 
     const { project, workspaceMembers = [], canEdit } = data;
 
@@ -146,10 +146,10 @@ const ProjectSettings = () => {
     };
 
     return (
-        <div className="relative min-h-screen bg-gray-50/50">
+        <div className="relative min-h-screen bg-background">
             <div className="flex justify-center w-full pt-16 pb-20">
                 <div className="w-full max-w-5xl space-y-8 px-4 sm:px-6">
-                    <Card className="shadow-sm border-gray-200">
+                    <Card className="shadow-sm border border-border bg-card">
                         <CardHeader>
                             <div className="flex flex-col gap-1">
                                 <h2 className="text-2xl font-bold tracking-tight">Project Settings</h2>
@@ -160,20 +160,25 @@ const ProjectSettings = () => {
                         <CardContent className="space-y-8 pt-6">
                             {/* Title & Description */}
                             <div className="space-y-8">
-                                <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                                    <label className="text-sm font-semibold text-gray-700">Project Title</label>
+                                <div className="grid grid-cols-[100px_1fr]  gap-3">
+                                    <label className="text-base font-semibold text-foreground mt-1">Project Title</label>
                                     <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canEdit} />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700">Description</label>
-                                    <Textarea className="min-h-[120px] resize-y" value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} />
+                                <div className="space-y-7">
+                                    <label className="text-base font-semibold text-foreground mt-1">Description</label>
+                                    <Textarea
+                                        className="min-h-[120px] resize-none"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        disabled={!canEdit}
+                                    />
                                 </div>
                             </div>
 
                             {/* Status & Dates */}
                             <div className="space-y-6">
                                 <div className="grid grid-cols-[60px_1fr] items-center gap-4">
-                                    <label className="text-sm font-semibold text-gray-700">Status</label>
+                                    <label className="text-base font-semibold text-foreground">Status</label>
                                     <Select value={status} onValueChange={setStatus} disabled={!canEdit}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -187,8 +192,8 @@ const ProjectSettings = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <label className="text-sm font-semibold text-gray-700">Start Date</label>
+                                    <div className="space-y-2 mb-2">
+                                        <label className="text-base font-semibold text-foreground">Start Date</label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={!canEdit}>
@@ -202,7 +207,7 @@ const ProjectSettings = () => {
                                         </Popover>
                                     </div>
                                     <div className="space-y-3">
-                                        <label className="text-sm font-semibold text-gray-700">Due Date</label>
+                                        <label className="text-base font-semibold text-foreground">Due Date</label>
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={!canEdit}>
@@ -220,8 +225,8 @@ const ProjectSettings = () => {
 
                             {/* Members Selection */}
                             <div className="space-y-3">
-                                <label className="text-sm font-semibold text-gray-700">Project Members</label>
-                                <div className={`border rounded-lg p-1 bg-gray-50/50 ${!canEdit ? "opacity-60 pointer-events-none" : ""}`}>
+                                <label className="text-base font-semibold text-foreground">Project Members</label>
+                                <div className={`border border-border rounded-lg p-1 bg-muted/30 ${!canEdit ? "opacity-60 pointer-events-none" : ""}`}>
                                     <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
                                         {workspaceMembers.map((member: any) => {
                                             if (!member?.user) return null;
@@ -230,7 +235,10 @@ const ProjectSettings = () => {
                                             return (
                                                 <div
                                                     key={userId}
-                                                    className={cn("flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors border", isSelected ? "bg-white border-primary/20 shadow-sm" : "border-transparent hover:bg-gray-100")}
+                                                    className={cn("flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors border", isSelected
+                                                        ? "bg-accent border-primary/20 shadow-sm"
+                                                        : "border-transparent hover:bg-muted"
+                                                    )}
                                                     onClick={() => toggleMember(userId)}
                                                 >
                                                     <div className="flex items-center gap-3">
@@ -243,7 +251,11 @@ const ProjectSettings = () => {
                                                             <p className="text-xs text-muted-foreground capitalize mt-1">{member.role}</p>
                                                         </div>
                                                     </div>
-                                                    {isSelected && <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center"><Check className="h-3 w-3 text-white" /></div>}
+                                                    {isSelected && (
+                                                        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-md">
+                                                            <Check className="h-3 w-3 text-primary-foreground" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -263,7 +275,7 @@ const ProjectSettings = () => {
                         <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h3 className="text-lg font-semibold text-gray-800">Archive Project</h3>
+                                    <h3 className="text-lg font-semibold text-foreground">Archive Project</h3>
                                     <p className="text-sm text-muted-foreground">{project.isArchived ? "This project is currently archived." : "Archiving removes this project from active views."}</p>
                                 </div>
                             </div>
@@ -277,7 +289,7 @@ const ProjectSettings = () => {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-red-100 shadow-sm bg-red-50/10">
+                    <Card className="border border-destructive/40 bg-destructive/5 shadow-sm">
                         <CardHeader className="pb-4">
                             <h3 className="text-lg font-semibold text-red-600">Danger Zone</h3>
                             <p className="text-sm text-muted-foreground">Irreversible actions for this project.</p>
