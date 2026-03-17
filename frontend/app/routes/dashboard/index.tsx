@@ -1,9 +1,7 @@
-
 import { RecentProjects } from "@/components/dashboard/recnt-projects";
-import { StatsCard } from "@/components/dashboard/stat-card";
+import { StatsCard, TimeTrackerStatCard } from "@/components/dashboard/stat-card"; // ✅ Added import here
 import { StatisticsCharts } from "@/components/dashboard/statistics-charts";
 import { Loader } from "@/components/loader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UpcomingTasks } from "@/components/upcoming-tasks";
 import { useGetWorkspaceStatsQuery } from "@/hooks/use-workspace";
 import type {
@@ -20,6 +18,7 @@ import { useSearchParams } from "react-router";
 const Dashboard = () => {
     const [searchParams] = useSearchParams();
     const workspaceId = searchParams.get("workspaceId");
+
     const { data, isPending } = useGetWorkspaceStatsQuery(workspaceId) as {
         data: {
             stats: StatsCardProps;
@@ -32,27 +31,35 @@ const Dashboard = () => {
         };
         isPending: boolean;
     };
+
     if (!workspaceId) {
         return (
             <div className="flex items-center justify-center h-[70vh]">
-                <p className="text-muted-foreground">
-                    Please select a workspace
-                </p>
+                <p className="text-muted-foreground">Please select a workspace</p>
             </div>
         );
     }
 
     if (isPending) {
-        return (
-            <div>
-                <Loader />
-            </div>
-        );
+        return <Loader />;
     }
 
     return (
-        <div className="space-y-8 2xl:space-y-12 pt-7 pb-10">
-            <StatsCard data={data.stats} />
+        <div className="space-y-6 lg:space-y-8 pt-7 pb-10">
+
+            {/* ✅ NEW 4+1 GRID LAYOUT */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
+                {/* Left side: The 4 normal cards (Takes up 9 out of 12 columns) */}
+                <div className="xl:col-span-9">
+                    <StatsCard data={data.stats} />
+                </div>
+
+                {/* Right side: The new Time Tracker card (Takes up 3 out of 12 columns) */}
+                <div className="xl:col-span-3">
+                    <TimeTrackerStatCard data={data.stats} />
+                </div>
+            </div>
+
             <StatisticsCharts
                 stats={data.stats}
                 taskTrendsData={data.taskTrendsData}
@@ -63,9 +70,7 @@ const Dashboard = () => {
 
             <div className="grid gap-6 lg:grid-cols-2">
                 <RecentProjects data={data.recentProjects} />
-
                 <UpcomingTasks data={data.upcomingTasks} />
-
             </div>
 
         </div>

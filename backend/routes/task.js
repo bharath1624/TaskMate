@@ -4,7 +4,7 @@ import { z } from "zod";
 import { validateRequest } from "zod-express-middleware";
 import { taskSchema } from "../libs/validate-schema.js";
 import attachement from "../middleware/attachment.js";
-import { achievedTask, addComment, addSubTask, addTaskAttachment, createTask, deleteTask, deleteTaskAttachment, getActivityByResourceId, getCommentsByTaskId, getMyTasks, getTaskById, updateSubTask, updateTaskAssignees, updateTaskDescription, updateTaskPriority, updateTaskStatus, updateTaskTitle, watchTask } from "../controllers/task.js";
+import { achievedTask, addComment, addSubTask, addTaskAttachment, createTask, deleteTask, deleteTaskAttachment, deleteTimeLog, getActivityByResourceId, getCommentsByTaskId, getMyTasks, getTaskById, getTimeLogs, startTimer, stopTimer, updateSubTask, updateTaskAssignees, updateTaskDescription, updateTaskPriority, updateTaskStatus, updateTaskTitle, watchTask } from "../controllers/task.js";
 
 const router = express.Router();
 
@@ -195,5 +195,39 @@ router.put(
         import("../controllers/task.js").then(c => c.markCommentsAsRead(req, res)).catch(next);
     }
 );
+router.post(
+    "/:taskId/time/start",
+    authMiddleware,
+    validateRequest({ params: z.object({ taskId: z.string() }) }),
+    startTimer
+);
 
+// Stop running timer for a task
+router.post(
+    "/:taskId/time/stop",
+    authMiddleware,
+    validateRequest({
+        params: z.object({ taskId: z.string() }),
+        body: z.object({ note: z.string().optional() }),
+    }),
+    stopTimer
+);
+
+// Get all time logs for a task
+router.get(
+    "/:taskId/time",
+    authMiddleware,
+    validateRequest({ params: z.object({ taskId: z.string() }) }),
+    getTimeLogs
+);
+
+// Delete a specific time log
+router.delete(
+    "/:taskId/time/:logId",
+    authMiddleware,
+    validateRequest({
+        params: z.object({ taskId: z.string(), logId: z.string() }),
+    }),
+    deleteTimeLog
+);
 export default router;

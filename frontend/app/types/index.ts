@@ -50,6 +50,7 @@ export interface Project {
     createdAt: Date;
     updatedAt: Date;
     isArchived: boolean;
+    totalTimeLogged?: number;
 }
 export type TaskStatus = "To Do" | "In Progress" | "Done";
 export type TaskPriority = "High" | "Medium" | "Low";
@@ -161,6 +162,7 @@ export interface StatsCardProps {
     totalTaskCompleted: number;
     totalTaskToDo: number;
     totalTaskInProgress: number;
+    totalWorkspaceTime?: number;
 }
 
 export interface TaskTrendsData {

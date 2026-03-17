@@ -126,10 +126,11 @@ export const TaskAttachments = ({ task, workspaceOwnerId, currentUserRole }: Tas
                             // ✅ Change py-2 to a fixed height like h-11 or h-12
                             className="group flex items-center justify-between rounded-md border px-3 h-12 hover:bg-muted transition">
                             <a
-                                href={att.fileUrl}
+                                // ✅ Prepend your backend URL (e.g., http://localhost:5000) so React doesn't try to route to it!
+                                href={`http://localhost:5000${att.fileUrl}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm truncate py-1" // Added small padding to anchor for better click area
+                                className="flex items-center gap-2 text-sm truncate py-1"
                             >
                                 <Paperclip className="size-4 text-muted-foreground" />
                                 <span className="truncate">{att.fileName}</span>

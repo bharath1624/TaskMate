@@ -169,8 +169,6 @@ const MyTasks = () => {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                            <DropdownMenuLabel>Filter Tasks</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => setFilter("all")}>All Tasks</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setFilter("todo")}>To Do</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setFilter("inprogress")}>In Progress</DropdownMenuItem>

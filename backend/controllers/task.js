@@ -6,8 +6,7 @@ import ActivityLog from "../models/activity.js";
 import Comment from "../models/comment.js";
 import { recordActivity } from "../libs/index.js";
 import Notification from "../models/notification.js";
-import { io } from "../index.js";
-import mongoose from "mongoose";
+import TimeLog from "../models/time-log.js";
 // ✅ 1. ROBUST ID HELPER
 const safeId = (id) => {
     if (!id) return "";
@@ -676,16 +675,13 @@ const addTaskAttachment = async (req, res) => {
             return res.status(404).json({ message: "Task not found" });
         }
 
-        // permissions
-        const project = await Project.findById(task.project);
-        const isMember = project.members.some(
-            (m) => m.user.toString() === req.user._id.toString()
-        );
-        if (!isMember) {
-            return res.status(403).json({ message: "Not allowed" });
+        // ✅ FIX: Use your robust checkTaskAccess helper instead of just checking project members
+        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        if (!isAuthorized) {
+            return res.status(403).json({ message: "Not allowed to add attachments" });
         }
 
-        let attachment; // ✅ declare ONCE
+        let attachment;
 
         if (type === "file") {
             if (!req.file) {
@@ -695,7 +691,8 @@ const addTaskAttachment = async (req, res) => {
             attachment = {
                 type: "file",
                 fileName: req.file.originalname,
-                fileUrl: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
+                // Make sure this points to your backend URL correctly
+                fileUrl: `/uploads/${req.file.filename}`,
                 fileType: req.file.mimetype,
                 fileSize: req.file.size,
                 uploadedBy: req.user._id,
@@ -709,6 +706,7 @@ const addTaskAttachment = async (req, res) => {
                 uploadedBy: req.user._id,
             };
         }
+
         if (!attachment || !attachment.fileUrl) {
             return res.status(400).json({ message: "Invalid attachment" });
         }
@@ -827,6 +825,209 @@ const markCommentsAsRead = async (req, res) => {
     }
 };
 
+// ─────────────────────────────────────────────
+// HELPER: verify the user can access this task
+// ─────────────────────────────────────────────
+const getTaskContext = async (taskId, userId) => {
+    const task = await Task.findById(taskId);
+    if (!task) return null;
+
+    const project = await Project.findById(task.project);
+    if (!project) return null;
+
+    const workspace = await Workspace.findById(project.workspace);
+    if (!workspace) return null;
+
+    const isMember =
+        workspace.owner.toString() === userId ||
+        workspace.members.some((m) => (m.user._id || m.user).toString() === userId);
+
+    if (!isMember) return null;
+
+    return { task, project, workspace };
+};
+
+// ─────────────────────────────────────────────
+// POST /tasks/:taskId/time/start
+// Start a new timer session. Stops any currently running session first.
+// ─────────────────────────────────────────────
+export const startTimer = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const userId = req.user._id.toString();
+
+        const ctx = await getTaskContext(taskId, userId);
+        if (!ctx) return res.status(404).json({ message: "Task not found or access denied" });
+
+        // Stop any existing running session for this user on ANY task
+        const runningSession = await TimeLog.findOne({
+            user: userId,
+            endTime: null,
+        });
+
+        if (runningSession) {
+            const now = new Date();
+            runningSession.endTime = now;
+            runningSession.duration = Math.floor(
+                (now - runningSession.startTime) / 1000
+            );
+            await runningSession.save();
+
+            // Update actualHours on that task too
+            await recalcActualHours(runningSession.task.toString());
+        }
+
+        // Create new session
+        const newLog = await TimeLog.create({
+            task: taskId,
+            project: ctx.project._id,
+            workspace: ctx.workspace._id,
+            user: userId,
+            startTime: new Date(),
+            endTime: null,
+            duration: 0,
+        });
+
+        res.status(201).json(newLog);
+    } catch (error) {
+        console.error("startTimer error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─────────────────────────────────────────────
+// POST /tasks/:taskId/time/stop
+// Stop the currently running timer for this user on this task
+// ─────────────────────────────────────────────
+export const stopTimer = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const userId = req.user._id.toString();
+
+        const session = await TimeLog.findOne({
+            task: taskId,
+            user: userId,
+            endTime: null,
+        });
+
+        if (!session) {
+            return res.status(404).json({ message: "No active timer found for this task" });
+        }
+
+        const now = new Date();
+        session.endTime = now;
+        session.duration = Math.floor((now - session.startTime) / 1000);
+        if (req.body.note) session.note = req.body.note;
+        await session.save();
+
+        // Recalculate task's actualHours
+        await recalcActualHours(taskId);
+
+        res.status(200).json(session);
+    } catch (error) {
+        console.error("stopTimer error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+// ─────────────────────────────────────────────
+// GET /tasks/:taskId/time
+// Get time logs based on Role (Member = Own, Admin/Owner = All)
+// ─────────────────────────────────────────────
+export const getTimeLogs = async (req, res) => {
+    try {
+        const { taskId } = req.params;
+        const userId = req.user._id.toString();
+
+        const ctx = await getTaskContext(taskId, userId);
+        if (!ctx) return res.status(404).json({ message: "Task not found or access denied" });
+
+        // 1. Identify User's Role in this Workspace
+        const isOwner = ctx.workspace.owner.toString() === userId;
+        const memberData = ctx.workspace.members.find(m => (m.user._id || m.user).toString() === userId);
+        const isAdmin = memberData?.role === "admin";
+
+        // 2. Build Query (Admins/Owners see all, Members see only their own)
+        const query = { task: taskId };
+        if (!isOwner && !isAdmin) {
+            query.user = userId; // Secure: Restrict to only this user's logs
+        }
+
+        // 3. Fetch Logs
+        const logs = await TimeLog.find(query)
+            .populate("user", "name profilePicture")
+            .sort({ startTime: -1 });
+
+        // 4. Fetch Active Session (only for the current user)
+        const activeSession = await TimeLog.findOne({
+            task: taskId,
+            user: userId,
+            endTime: null,
+        }).populate("user", "name profilePicture");
+
+        // 5. Calculate Total Time (will automatically be 'Total Team Time' for admins, and 'Personal Time' for members)
+        const totalSeconds = logs
+            .filter((l) => l.endTime !== null)
+            .reduce((sum, l) => sum + (l.duration || 0), 0);
+
+        res.status(200).json({
+            logs,
+            activeSession,
+            totalSeconds,
+        });
+    } catch (error) {
+        console.error("getTimeLogs error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+// ─────────────────────────────────────────────
+// DELETE /tasks/:taskId/time/:logId
+// Delete a specific time log entry
+// ─────────────────────────────────────────────
+export const deleteTimeLog = async (req, res) => {
+    try {
+        const { taskId, logId } = req.params;
+        const userId = req.user._id.toString();
+
+        const log = await TimeLog.findById(logId);
+        if (!log) return res.status(404).json({ message: "Log not found" });
+
+        // Only the owner of the log or workspace admin can delete
+        const ctx = await getTaskContext(taskId, userId);
+        if (!ctx) return res.status(403).json({ message: "Access denied" });
+
+        const isOwner = log.user.toString() === userId;
+        const isAdmin =
+            ctx.workspace.owner.toString() === userId ||
+            ctx.workspace.members.some(
+                (m) =>
+                    (m.user._id || m.user).toString() === userId &&
+                    ["admin", "owner"].includes(m.role)
+            );
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: "Not allowed to delete this log" });
+        }
+
+        await TimeLog.findByIdAndDelete(logId);
+        await recalcActualHours(taskId);
+
+        res.status(200).json({ message: "Time log deleted" });
+    } catch (error) {
+        console.error("deleteTimeLog error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+// ─────────────────────────────────────────────
+// INTERNAL: Recalculate task's actualHours from all completed logs
+// ─────────────────────────────────────────────
+const recalcActualHours = async (taskId) => {
+    const logs = await TimeLog.find({ task: taskId, endTime: { $ne: null } });
+    const totalSeconds = logs.reduce((sum, l) => sum + (l.duration || 0), 0);
+    const totalHours = parseFloat((totalSeconds / 3600).toFixed(2));
+    await Task.findByIdAndUpdate(taskId, { actualHours: totalHours });
+};
+
 export {
     createTask,
     getTaskById,
@@ -846,5 +1047,5 @@ export {
     deleteTask,
     addTaskAttachment,
     deleteTaskAttachment,
-    markCommentsAsRead
+    markCommentsAsRead,
 };

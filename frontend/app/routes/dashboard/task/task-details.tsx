@@ -36,6 +36,7 @@ import { useDeleteTaskMutation } from "@/hooks/use-task";
 import { TaskAttachments } from "./task-attachement";
 import { priorityStyles } from "@/lib/task-util";
 import { useEffect } from "react";
+import { TaskTimeTracker } from "@/components/task/task-timer-tracker";
 
 const TaskDetails = () => {
     const { user } = useAuth();
@@ -78,15 +79,17 @@ const TaskDetails = () => {
     const isAdminOrOwner = canEdit;
 
     const currentUserId = user?._id?.toString();
-    const ownerId = workspaceOwner?.toString();
-    let currentUserRole = "member";
-    if (currentUserId === ownerId) currentUserRole = "owner";
-    else if (isAdminOrOwner) currentUserRole = "admin";
-
     const isUserWatching = task?.watchers?.some(
         (watcher) => watcher._id.toString() === user?._id.toString()
     );
+    const ownerId = typeof workspaceOwner === "object"
+        ? (workspaceOwner as any)._id?.toString()
+        : workspaceOwner?.toString();
 
+    let currentUserRole = "member";
+    if (currentUserId === ownerId) currentUserRole = "owner";
+    else if (isAdminOrOwner) currentUserRole = "admin";
+    const isOwner = currentUserId === ownerId;
     const handleWatchTask = () => {
         watchTask({ taskId: task._id }, {
             onSuccess: () => toast.success("Task watched"),
@@ -200,14 +203,20 @@ const TaskDetails = () => {
 
                 {/* Right Column (Slave Height) */}
                 <div className="lg:col-span-3 relative min-h-[500px]">
-                    <div className="flex flex-col gap-6 lg:absolute lg:inset-0 overflow-hidden">
-                        <div className="shrink-0">
-                            <Watchers watchers={task.watchers || []} />
-                        </div>
+                    <div className="flex flex-col gap-6 lg:absolute lg:inset-0 overflow-y-auto pt-1">
+
+                        <Watchers watchers={task.watchers || []} />
+
+                        <TaskTimeTracker
+                            taskId={task._id}
+                            canEdit={canEdit}
+                            isOwner={isOwner}
+                        />
 
                         <div className="flex-1 min-h-0">
                             <TaskActivity resourceId={task._id} />
                         </div>
+
                     </div>
                 </div>
             </div>

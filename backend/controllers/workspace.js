@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Workspace from "../models/workspace.js";
 import Project from "../models/project.js";
 import User from "../models/user.js";
@@ -6,6 +7,7 @@ import jwt from "jsonwebtoken";
 import { sendEmail } from "../libs/send-email.js";
 import { recordActivity } from "../libs/index.js";
 import Task from "../models/task.js";
+import TimeLog from "../models/time-log.js";
 
 
 const createWorkspace = async (req, res) => {
@@ -61,12 +63,13 @@ const updateWorkspace = async (req, res) => {
 };
 
 // ✅ FIX 1: GET WORKSPACE PROJECTS (DASHBOARD)
+// ✅ UPDATED: GET WORKSPACE PROJECTS (DASHBOARD) with TIME ROLLUP
 const getWorkspaceProjects = async (req, res) => {
     try {
         const { workspaceId } = req.params;
         const userId = req.user._id.toString();
 
-        // Fetch workspace first to check owner
+        // 1. Fetch workspace first to check owner/role
         const workspace = await Workspace.findOne({
             _id: workspaceId,
             "members.user": req.user._id,
@@ -75,30 +78,67 @@ const getWorkspaceProjects = async (req, res) => {
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
         workspace.members = workspace.members.filter(member => member.user !== null);
 
-
-        // 👑 GOD MODE CHECK
+        // 2. Determine Role
         const isWorkspaceOwner = workspace.owner.toString() === userId;
+        const memberData = workspace.members.find(m => m.user._id.toString() === userId);
+        const isAdmin = memberData?.role === "admin";
 
-        // Build Query
+        // 3. Build Project Query
         let query = {
             workspace: workspaceId,
             isArchived: false,
         };
 
-        // 🔒 IF NOT OWNER, APPLY FILTER
-        if (!isWorkspaceOwner) {
+        // If regular member, only show projects they are part of
+        if (!isWorkspaceOwner && !isAdmin) {
             query.members = { $elemMatch: { user: req.user._id } };
         }
 
+        // 4. Fetch Projects
         const projects = await Project.find(query)
             .populate({
                 path: "tasks",
-                match: { isArchived: false }, // 👈 THIS IS THE FIX. Only fetch active tasks.
+                match: { isArchived: false },
                 select: "status"
             })
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean(); // Convert to raw JS objects so we can attach time data
 
-        res.status(200).json({ projects, workspace });
+        // 5. Build Aggregation Pipeline for Time Tracking
+        // We only want completed time logs (endTime is not null)
+        const matchStage = {
+            workspace: new mongoose.Types.ObjectId(workspaceId),
+            endTime: { $ne: null }
+        };
+
+        // If regular member, ONLY sum up THEIR time. If Admin/Owner, sum up ALL time.
+        if (!isWorkspaceOwner && !isAdmin) {
+            matchStage.user = new mongoose.Types.ObjectId(userId);
+        }
+
+        const timeAggregation = await TimeLog.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: "$project", // Group by Project ID
+                    totalSeconds: { $sum: "$duration" }
+                }
+            }
+        ]);
+
+        // Create a fast lookup map: { projectId: totalSeconds }
+        const timeMap = {};
+        timeAggregation.forEach(stat => {
+            timeMap[stat._id.toString()] = stat.totalSeconds;
+        });
+
+        // 6. Attach time data to each project
+        const projectsWithTime = projects.map(project => ({
+            ...project,
+            totalTimeLogged: timeMap[project._id.toString()] || 0
+        }));
+
+        res.status(200).json({ projects: projectsWithTime, workspace });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Internal server error" });
@@ -106,6 +146,7 @@ const getWorkspaceProjects = async (req, res) => {
 };
 
 // ✅ FIX 2: GET WORKSPACE STATS
+// ✅ FIX 2: GET WORKSPACE STATS (UPDATED WITH TIME ROLLUP)
 const getWorkspaceStats = async (req, res) => {
     try {
         const { workspaceId } = req.params;
@@ -115,14 +156,18 @@ const getWorkspaceStats = async (req, res) => {
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
         workspace.members = workspace.members.filter(member => member.user !== null);
 
-        const isMember = workspace.members.some(member => member.user.toString() === userId);
-        if (!isMember) return res.status(403).json({ message: "You are not a member of this workspace" });
+        const memberData = workspace.members.find(member => member.user.toString() === userId);
+        const isMember = !!memberData;
+        if (!isMember && workspace.owner.toString() !== userId) {
+            return res.status(403).json({ message: "You are not a member of this workspace" });
+        }
 
         // 👑 GOD MODE CHECK
         const isWorkspaceOwner = workspace.owner.toString() === userId;
+        const isAdmin = memberData?.role === "admin";
 
         let projectQuery = { workspace: workspaceId, isArchived: false };
-        if (!isWorkspaceOwner) {
+        if (!isWorkspaceOwner && !isAdmin) {
             projectQuery["members.user"] = userId;
         }
 
@@ -131,7 +176,7 @@ const getWorkspaceStats = async (req, res) => {
             Project.find(projectQuery)
                 .populate({
                     path: "tasks",
-                    match: { isArchived: false }, // ✅ ONLY fetch active tasks
+                    match: { isArchived: false },
                     select: "title status dueDate project updatedAt isArchived priority"
                 })
                 .sort({ createdAt: -1 }),
@@ -142,6 +187,29 @@ const getWorkspaceStats = async (req, res) => {
         const totalTaskCompleted = projects.reduce((acc, project) => acc + project.tasks.filter((task) => task.status === "Done").length, 0);
         const totalTaskToDo = projects.reduce((acc, project) => acc + project.tasks.filter((task) => task.status === "To Do").length, 0);
         const totalTaskInProgress = projects.reduce((acc, project) => acc + project.tasks.filter((task) => task.status === "In Progress").length, 0);
+
+        // ✅ AGGREGATE TOTAL WORKSPACE TIME
+        const timeMatchStage = {
+            workspace: new mongoose.Types.ObjectId(workspaceId),
+            endTime: { $ne: null }
+        };
+
+        // If regular member, only sum THEIR time. Admins/Owners see ALL time.
+        if (!isWorkspaceOwner && !isAdmin) {
+            timeMatchStage.user = new mongoose.Types.ObjectId(userId);
+        }
+
+        const timeAggregation = await TimeLog.aggregate([
+            { $match: timeMatchStage },
+            {
+                $group: {
+                    _id: null,
+                    totalSeconds: { $sum: "$duration" }
+                }
+            }
+        ]);
+
+        const totalWorkspaceTime = timeAggregation.length > 0 ? timeAggregation[0].totalSeconds : 0;
 
         const tasks = projects.flatMap((project) => project.tasks);
         const now = new Date();
@@ -154,7 +222,7 @@ const getWorkspaceStats = async (req, res) => {
             return due >= now && due <= next7Days;
         });
 
-        // Trends & Stats Data (Standard)
+        // Trends & Stats Data
         const taskTrendsData = [
             { name: "Sunday", completed: 0, inProgress: 0, todo: 0 },
             { name: "Monday", completed: 0, inProgress: 0, todo: 0 },
@@ -197,7 +265,9 @@ const getWorkspaceStats = async (req, res) => {
             return { name: p.title, completed: pTasks.filter(t => t.status === "Done" && !t.isArchived).length, total: pTasks.length };
         });
 
-        const stats = { totalProjects, totalTasks, totalProjectInProgress, totalTaskCompleted, totalTaskToDo, totalTaskInProgress };
+        // ✅ ADDED totalWorkspaceTime HERE
+        const stats = { totalProjects, totalTasks, totalProjectInProgress, totalTaskCompleted, totalTaskToDo, totalTaskInProgress, totalWorkspaceTime };
+
         res.status(200).json({ stats, taskTrendsData, projectStatusData, taskPriorityData, workspaceProductivityData, upcomingTasks, recentProjects: projects.slice(0, 3) });
     } catch (error) { console.log(error); res.status(500).json({ message: "Internal server error" }); }
 };
