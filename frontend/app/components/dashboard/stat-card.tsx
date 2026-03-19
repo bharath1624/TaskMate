@@ -9,11 +9,14 @@ import { FolderKanban, CheckSquare, ListTodo, Loader2, Clock } from "lucide-reac
 
 // Helper to format seconds
 const formatDuration = (seconds: number): string => {
-    if (!seconds || seconds <= 0) return "0H 0M";
+    if (!seconds || seconds <= 0) return "0h 0m";
+
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `${h}H ${m}M`;
-    return `${m}M`;
+
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
 };
 
 // 1. The original 4 cards
@@ -84,7 +87,7 @@ export const TimeTrackerStatCard = ({ data }: { data: StatsCardProps }) => {
             <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-blue-400/20 blur-xl rounded-full pointer-events-none"></div>
 
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                <CardTitle className="text-sm font-medium text-blue-100 uppercase tracking-wider">Total Time Worked</CardTitle>
+                <CardTitle className="text-sm font-medium text-blue-100 uppercase tracking-wider">Total Time Tracked</CardTitle>
                 <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
                     <Clock className="h-4 w-4 text-white" />
                 </div>
@@ -94,7 +97,7 @@ export const TimeTrackerStatCard = ({ data }: { data: StatsCardProps }) => {
                     {formatDuration(data.totalWorkspaceTime || 0)}
                 </div>
                 <p className="text-xs text-blue-200 mt-2 font-medium">
-                    Across all projects
+                    Across all Projects
                 </p>
             </CardContent>
         </Card>

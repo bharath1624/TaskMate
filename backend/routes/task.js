@@ -3,7 +3,7 @@ import express from "express";
 import { z } from "zod";
 import { validateRequest } from "zod-express-middleware";
 import { taskSchema } from "../libs/validate-schema.js";
-import attachement from "../middleware/attachment.js";
+import { uploadAttachment } from "../libs/cloudinary.js";
 import { achievedTask, addComment, addSubTask, addTaskAttachment, createTask, deleteTask, deleteTaskAttachment, deleteTimeLog, getActivityByResourceId, getCommentsByTaskId, getMyTasks, getTaskById, getTimeLogs, startTimer, stopTimer, updateSubTask, updateTaskAssignees, updateTaskDescription, updateTaskPriority, updateTaskStatus, updateTaskTitle, watchTask } from "../controllers/task.js";
 
 const router = express.Router();
@@ -154,10 +154,26 @@ router.get(
     getCommentsByTaskId
 );
 // ➕ Add attachment (file or URL)
+const handleAttachmentUpload = (req, res, next) => {
+    uploadAttachment.single("file")(req, res, (err) => {
+        if (!err) return next();
+        // File too large
+        if (err.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({
+                message: "File too large. Maximum size is 10 MB.",
+            });
+        }
+        // Wrong file type (from fileFilter)
+        if (err.message) {
+            return res.status(415).json({ message: err.message });
+        }
+        next(err);
+    });
+};
 router.post(
     "/:taskId/attachments",
     authMiddleware,
-    attachement.single("file"), // 👈 MULTER HERE
+    handleAttachmentUpload,
     validateRequest({
         params: z.object({ taskId: z.string() }),
         body: z.object({

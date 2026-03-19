@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useVerifyEmailMutation } from "@/hooks/use-auth";
-import { CheckCircle, Loader2, XCircle, Layout, Mail } from 'lucide-react';
+import { CheckCircle2, Loader2, XCircle, Layout, MailOpen, ShieldAlert } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { toast } from "sonner";
@@ -32,90 +32,111 @@ const VerifyEmail = () => {
             )
             setIsSuccess(false);
         }
-    }, [searchParams]);
+    }, [searchParams, mutate]); // Included mutate in dependency array for best practices
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden px-4">
+        <div className="min-h-screen w-full flex flex-col bg-background relative overflow-hidden">
 
-            {/* ================= BACKGROUND EFFECTS ================= */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 blur-[120px] rounded-full mix-blend-screen" />
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_2px,transparent_2px),linear-gradient(90deg,rgba(255,255,255,0.02)_2px,transparent_2px)] bg-size-[32px_32px] mask-[radial-gradient(ellipse_60%_60%_at_50%_50%,#000_20%,transparent_100%)] opacity-50 dark:bg-[linear-gradient(rgba(255,255,255,0.03)_2px,transparent_2px)]" />
-            </div>
+            {/* ================= CINEMATIC BACKGROUND EFFECTS ================= */}
+            {/* Top Spotlight */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-blue-600/20 via-indigo-900/5 to-transparent opacity-80 pointer-events-none" />
 
-            {/* ================= VERIFICATION CARD ================= */}
-            <div className="relative z-10 w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-                <div className="bg-white/5 backdrop-blur-2xl border border-border/50 rounded-3xl shadow-2xl p-8 sm:p-10 flex flex-col items-center text-center overflow-hidden relative">
+            {/* Grid Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[4rem_4rem] mask-[radial-gradient(ellipse_60%_60%_at_50%_0%,#000_20%,transparent_100%)] pointer-events-none" />
 
-                    {/* Subtle top gradient line for depth */}
-                    <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80" />
-
-                    {/* App Logo */}
-                    <div className="flex items-center gap-2 mb-10">
-                        <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
-                            <Layout className="size-5 text-white" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-foreground">TaskMate</span>
+            {/* ================= TOP NAVIGATION ================= */}
+            <header className="w-full relative z-20 px-6 py-6 sm:px-12 flex justify-center sm:justify-start">
+                <div className="flex items-center gap-2.5">
+                    <div className="bg-linear-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-600/20 border border-blue-500/20">
+                        <Layout className="size-5 text-white" />
                     </div>
+                    <span className="text-2xl font-extrabold tracking-tight text-foreground">TaskMate</span>
+                </div>
+            </header>
 
-                    {/* ================= DYNAMIC STATES ================= */}
-                    <div className="w-full flex flex-col items-center min-h-[220px] justify-center">
+            {/* ================= MAIN CONTENT AREA ================= */}
+            <main className="flex-1 flex flex-col items-center justify-center px-4 relative z-10 pb-20">
+                <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center">
 
-                        {isVerifying ? (
-                            /* --------- LOADING STATE --------- */
-                            <div className="flex flex-col items-center animate-in fade-in duration-500">
-                                <div className="relative w-20 h-20 flex items-center justify-center mb-6">
-                                    <div className="absolute inset-0 rounded-full border-t-2 border-r-2 border-blue-500 animate-[spin_1.5s_linear_infinite]" />
-                                    <div className="absolute inset-2 rounded-full border-b-2 border-l-2 border-indigo-400 animate-[spin_2s_linear_infinite_reverse]" />
-                                    <div className="bg-blue-500/10 p-3 rounded-full">
-                                        <Mail className="size-8 text-blue-500 animate-pulse" />
+                    {isVerifying ? (
+                        /* --------- LOADING STATE (Digital Scan Effect) --------- */
+                        <div className="flex flex-col items-center animate-in fade-in zoom-in-95 duration-700">
+                            <div className="relative w-32 h-32 mb-10 flex items-center justify-center">
+                                {/* Scanning Rings */}
+                                <div className="absolute inset-0 rounded-full border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.2)]" />
+                                <div className="absolute -inset-2.5 rounded-full border-t-2 border-r-2 border-blue-500 animate-[spin_2s_linear_infinite]" />
+                                <div className="absolute -inset-5 rounded-full border-b-2 border-l-2 border-indigo-500/50 animate-[spin_3s_linear_infinite_reverse]" />
+
+                                {/* Center Icon */}
+                                <div className="absolute bg-background/80 backdrop-blur-sm rounded-full p-4 border border-border">
+                                    <MailOpen className="size-10 text-blue-500 animate-pulse" />
+                                </div>
+                            </div>
+
+                            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground mb-4">
+                                Verifying Identity
+                            </h1>
+                            <p className="text-lg text-muted-foreground max-w-md mx-auto">
+                                Establishing a secure connection to authenticate your email address. Please hold on...
+                            </p>
+                        </div>
+
+                    ) : isSuccess ? (
+                        /* --------- SUCCESS STATE (Hero Celebration) --------- */
+                        <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-700 w-full">
+                            {/* Glowing Success Icon */}
+                            <div className="relative mb-10 group">
+                                <div className="absolute inset-0 bg-green-500 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse" />
+                                <div className="relative bg-linear-to-b from-green-400 to-green-600 p-1 rounded-full shadow-2xl">
+                                    <div className="bg-background rounded-full p-5">
+                                        <CheckCircle2 className="size-16 text-green-500" />
                                     </div>
                                 </div>
-                                <h3 className="text-2xl font-bold tracking-tight mb-2 text-foreground">Verifying Email</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Please wait while we securely verify your email address...
-                                </p>
                             </div>
 
-                        ) : isSuccess ? (
-                            /* --------- SUCCESS STATE --------- */
-                            <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
-                                <div className="relative w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20">
-                                    <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping opacity-20" />
-                                    <CheckCircle className="size-10 text-green-500" />
+                            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground mb-4">
+                                Verification Complete
+                            </h1>
+                            <p className="text-lg text-muted-foreground max-w-md mx-auto mb-10">
+                                Your email has been successfully secured. You now have full access to your TaskMate workspace.
+                            </p>
+
+                            <Link to="/sign-in" className="w-full max-w-sm">
+                                <Button className="w-full h-14 text-lg font-bold bg-foreground text-background hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98] shadow-2xl transition-all rounded-2xl">
+                                    Access Workspace
+                                </Button>
+                            </Link>
+                        </div>
+
+                    ) : (
+                        /* --------- ERROR STATE (Warning Focus) --------- */
+                        <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-8 duration-700 w-full">
+                            {/* Glowing Error Icon */}
+                            <div className="relative mb-10">
+                                <div className="absolute inset-0 bg-red-500 rounded-full blur-2xl opacity-30" />
+                                <div className="relative bg-linear-to-b from-red-400 to-red-600 p-1 rounded-full shadow-2xl">
+                                    <div className="bg-background rounded-full p-5">
+                                        <ShieldAlert className="size-16 text-red-500" />
+                                    </div>
                                 </div>
-                                <h3 className="text-2xl font-bold tracking-tight mb-2 text-foreground">Email Verified!</h3>
-                                <p className="text-sm text-muted-foreground mb-8">
-                                    Your email has been successfully verified. You can now access your workspace.
-                                </p>
-                                <Link to="/sign-in" className="w-full">
-                                    <Button className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl transition-all active:scale-[0.98]">
-                                        Continue to Sign In
-                                    </Button>
-                                </Link>
                             </div>
 
-                        ) : (
-                            /* --------- ERROR STATE --------- */
-                            <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
-                                <div className="relative w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
-                                    <XCircle className="size-10 text-red-500" />
-                                </div>
-                                <h3 className="text-2xl font-bold tracking-tight mb-2 text-foreground">Verification Failed</h3>
-                                <p className="text-sm text-muted-foreground mb-8">
-                                    The verification link is invalid or has expired. Please request a new link.
-                                </p>
-                                <Link to="/sign-in" className="w-full">
-                                    <Button variant="outline" className="w-full h-12 text-base font-semibold rounded-xl border-border/50 hover:bg-muted/50 transition-all">
-                                        Back to Sign In
-                                    </Button>
-                                </Link>
-                            </div>
-                        )}
+                            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground mb-4">
+                                Link Expired
+                            </h1>
+                            <p className="text-lg text-muted-foreground max-w-md mx-auto mb-10">
+                                The verification link is invalid or has timed out for security purposes. Please request a new link.
+                            </p>
 
-                    </div>
+                            <Link to="/sign-in" className="w-full max-w-sm">
+                                <Button variant="outline" className="w-full h-14 text-lg font-bold border-2 border-border hover:bg-muted hover:text-foreground transition-all rounded-2xl">
+                                    Return to Sign In
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

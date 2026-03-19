@@ -48,9 +48,32 @@ const registerUser = async (req, res) => {
         });
 
         // send email
+        // send email
         const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-        const emailBody = `<p>Click <a href="${verificationLink}">here</a> to verify your email</p>`;
-        const emailSubject = "Verify your email";
+        const emailSubject = "Verify your TaskMate account";
+        const emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+                <h2 style="color: #1f2937; margin-top: 0;">Welcome to TaskMate! 👋</h2>
+                
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                    We are excited to have you on board. To get started and ensure your account is secure, please verify your email address by clicking the link below:
+                </p>
+                
+                <div style="margin: 24px 0;">
+                    <a href="${verificationLink}" style="color: #2563eb; font-size: 16px; font-weight: bold; text-decoration: underline;">
+                        Click here to verify your email
+                    </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    If you did not create an account with us, you can ignore this email.
+                </p>
+                
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                    Powered by TaskMate
+                </p>
+            </div>
+        `;
 
         const isEmailSent = await sendEmail(email, emailSubject, emailBody);
 
@@ -107,8 +130,30 @@ const loginUser = async (req, res) => {
 
                 // send email
                 const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-                const emailBody = `<p>Click <a href="${verificationLink}">here</a> to verify your email</p>`;
-                const emailSubject = "Verify your email";
+                const emailSubject = "Verify your TaskMate account";
+                const emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+                <h2 style="color: #1f2937; margin-top: 0;">Welcome to TaskMate! 👋</h2>
+                
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                    We are excited to have you on board. To get started and ensure your account is secure, please verify your email address by clicking the link below:
+                </p>
+                
+                <div style="margin: 24px 0;">
+                    <a href="${verificationLink}" style="color: #2563eb; font-size: 16px; font-weight: bold; text-decoration: underline;">
+                        Click here to verify your email
+                    </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    If you did not create an account with us, you can ignore this email.
+                </p>
+                
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                    Powered by TaskMate
+                </p>
+            </div>
+        `;
 
                 const isEmailSent = await sendEmail(email, emailSubject, emailBody);
 
@@ -248,9 +293,40 @@ const resetPasswordRequest = async (req, res) => {
             expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         });
 
+        // send email
         const resetPasswordLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetPasswordToken}`;
-        const emailBody = `<p>Click <a href="${resetPasswordLink}">here</a> to reset your password</p>`;
-        const emailSubject = "Reset your password";
+        const emailSubject = "Reset your TaskMate password";
+        const emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+                <h2 style="color: #1f2937; margin-top: 0;">Password Reset Request 🔒</h2>
+                
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                    We received a request to reset the password associated with your TaskMate account. 
+                </p>
+
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                    Please click the link below to securely set a new password:
+                </p>
+                
+                <div style="margin: 24px 0;">
+                    <a href="${resetPasswordLink}" style="color: #2563eb; font-size: 16px; font-weight: bold; text-decoration: underline;">
+                        Click here to reset your password
+                    </a>
+                </div>
+
+                <p style="color: #ef4444; font-size: 14px; line-height: 1.5; font-weight: 500;">
+                    This link will expire soon for your security.
+                </p>
+
+                <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
+                    If you did not request a password reset, please ignore this email or contact support if you have concerns. Your password will remain unchanged.
+                </p>
+                
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                    Powered by TaskMate
+                </p>
+            </div>
+        `;
 
         const isEmailSent = await sendEmail(email, emailSubject, emailBody);
 

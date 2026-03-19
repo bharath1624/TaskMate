@@ -8,7 +8,7 @@ import {
 } from "../controllers/user.js";
 import { z } from "zod";
 import { validateRequest } from "zod-express-middleware";
-import upload from "../middleware/upload-middleware.js";
+import { uploadProfilePicture } from "../libs/cloudinary.js";
 
 
 const router = express.Router();
@@ -17,8 +17,8 @@ router.get("/profile", authenticateUser, getUserProfile);
 router.put(
     "/profile",
     authenticateUser,
-    upload.single("avatar"),   // ✅ Multer FIRST
-    updateUserProfile          // ✅ Controller
+    uploadProfilePicture.single("avatar"),  // was: upload.single("avatar")
+    updateUserProfile
 );
 
 router.put(

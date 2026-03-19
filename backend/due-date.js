@@ -4,7 +4,7 @@ import Project from "./models/project.js";
 import Notification from "./models/notification.js";
 
 export const runDueDateCheck = async (io) => {
-    console.log("🔎 Running Due Date Check...");
+    console.log("Running Due Date Check...");
 
     const now = new Date();
 
@@ -117,6 +117,14 @@ export const runDueDateCheck = async (io) => {
         for (const task of tasksOverdue) {
             if (task.project?.isArchived) continue;
 
+            // ✅ CALCULATE DAYS OVERDUE
+            const taskDueDate = new Date(task.dueDate);
+            taskDueDate.setHours(0, 0, 0, 0); // Normalize to midnight for accurate day counting
+            const overdueDays = Math.floor((startOfDay - taskDueDate) / (1000 * 60 * 60 * 24));
+
+            // Pluralize "day" vs "days"
+            const dayText = overdueDays === 1 ? "day" : "days";
+
             for (const user of task.assignees || []) {
                 const userId = user._id || user;
 
@@ -129,7 +137,8 @@ export const runDueDateCheck = async (io) => {
 
                 if (alreadyNotified) continue;
 
-                const message = `🚨 Overdue: "${task.title}" was due on ${new Date(task.dueDate).toLocaleDateString()}`;
+                // ✅ UPDATED MESSAGE WITH DAY COUNT
+                const message = `🚨 Overdue by ${overdueDays} ${dayText}: "${task.title}" was due on ${new Date(task.dueDate).toLocaleDateString()}`;
 
                 await Notification.create({
                     user: userId,
@@ -261,12 +270,12 @@ export const runDueDateCheck = async (io) => {
 };
 
 export const setupCronJobs = (io) => {
-    // Run once when server starts
-    runDueDateCheck(io);
-
-    // Run daily at 9:00 AM
+    // ✅ Run daily at 9:00 AM, explicitly set to Indian Standard Time
     cron.schedule("0 9 * * *", async () => {
         console.log("⏰ Running Scheduled Due Date Check...");
         await runDueDateCheck(io);
+    }, {
+        scheduled: true,
+        timezone: "Asia/Kolkata" // Force the server to run this at 9 AM India time
     });
 };

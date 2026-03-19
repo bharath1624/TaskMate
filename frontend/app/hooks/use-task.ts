@@ -266,20 +266,15 @@ export const useAddTaskAttachmentMutation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: {
-            taskId: string;
-            formData: FormData;
-        }) =>
-            postData(
-                `/tasks/${data.taskId}/attachments`,
-                data.formData
-            ),
+        mutationFn: (data: { taskId: string; formData: FormData }) =>
+            postData(`/tasks/${data.taskId}/attachments`, data.formData),
 
         onSuccess: (_data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ["task", variables.taskId],
-            });
-        }
+            queryClient.invalidateQueries({ queryKey: ["task", variables.taskId] });
+        },
+
+        // onError is intentionally left empty here —
+        // the component handles the toast so it can show the server message
     });
 };
 

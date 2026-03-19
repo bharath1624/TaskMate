@@ -7,9 +7,8 @@ import http from "http";
 import { Server } from "socket.io";
 import routes from "./routes/index.js";
 import { setupCronJobs, runDueDateCheck } from "./due-date.js";
-import path from "path";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,9 +24,6 @@ app.use(
         allowedHeaders: ["Content-Type", "Authorization"],
     })
 );
-
-// ✅ SERVE STATIC IMAGES 
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Socket.io Server
 const server = http.createServer(app);

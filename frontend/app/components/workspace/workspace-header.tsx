@@ -38,8 +38,8 @@ export const WorkspaceHeader = ({
     // 🔧 FIX: Robust Image Helper
     const getImageUrl = (path: string | undefined) => {
         if (!path) return undefined;
-        if (path.startsWith("http")) return path;
-        const BASE = "http://localhost:5000"; // Points to Root (No /api-v1)
+        if (path.startsWith("http")) return path;  // Cloudinary URLs start with https — pass through directly
+        const BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
         const cleanPath = path.startsWith("/") ? path : `/${path}`;
         return `${BASE}${cleanPath}`;
     };

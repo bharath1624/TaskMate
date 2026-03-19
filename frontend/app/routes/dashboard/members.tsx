@@ -141,7 +141,9 @@ const Members = () => {
                                                     <AvatarImage
                                                         src={
                                                             member.user.profilePicture
-                                                                ? `${BACKEND_URL}${member.user.profilePicture}`
+                                                                ? (member.user.profilePicture.startsWith("http")
+                                                                    ? member.user.profilePicture
+                                                                    : `${BACKEND_URL}${member.user.profilePicture}`)
                                                                 : undefined
                                                         }
                                                     />
@@ -193,7 +195,9 @@ const Members = () => {
                                             <AvatarImage
                                                 src={
                                                     member.user.profilePicture
-                                                        ? `${BACKEND_URL}${member.user.profilePicture}`
+                                                        ? (member.user.profilePicture.startsWith("http")
+                                                            ? member.user.profilePicture
+                                                            : `${BACKEND_URL}${member.user.profilePicture}`)
                                                         : undefined
                                                 }
                                             />

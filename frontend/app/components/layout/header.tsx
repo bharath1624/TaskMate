@@ -18,11 +18,11 @@ import { NotificationBell } from "../notification-bell";
 import { useState, useRef, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format, isToday } from "date-fns";
-// ✅ HOOK IMPORTS
 import { useGetMyTasksQuery, useGetWorkspaceTasksQuery } from "@/hooks/use-task";
 import { useGetWorkspaceQuery } from "@/hooks/use-workspace";
 import { Calendar } from "../ui/calendar";
 import { toast } from "sonner";
+import { startTransition } from "react";
 
 interface HeaderProps {
     workspaces?: Workspace[];
@@ -129,7 +129,11 @@ export const Header = ({
     };
 
     const handleMouseLeave = () => {
-        timeoutRef.current = setTimeout(() => setIsCalendarOpen(false), 200);
+        timeoutRef.current = setTimeout(() => {
+            startTransition(() => {
+                setIsCalendarOpen(false);
+            });
+        }, 200);
     };
     const hasUrgentItems = taskDates.some(d => isToday(d)) || projectDates.some(d => isToday(d));
     return (

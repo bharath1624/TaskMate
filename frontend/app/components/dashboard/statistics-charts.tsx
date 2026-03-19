@@ -344,10 +344,9 @@ export const StatisticsCharts = ({
                                         tickLine={false}
                                         axisLine={false}
                                         fontSize={12}
-                                        interval={0}              // 👈 force show all labels
-                                        angle={-30}               // 👈 rotate slightly
-                                        textAnchor="end"          // 👈 align nicely
-                                        height={70}               // 👈 give space for labels
+                                        interval={0}
+                                        // ✅ Use tickFormatter to cut off long names instead of rotating them
+                                        tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
                                     />
                                     <YAxis
                                         stroke="#888888"

@@ -23,9 +23,26 @@ const createWorkspace = async (req, res) => {
 
 const getWorkspaces = async (req, res) => {
     try {
-        const workspaces = await Workspace.find({ "members.user": req.user._id }).sort({ createdAt: -1 });
-        res.status(200).json(workspaces);
-    } catch (error) { console.log(error); res.status(500).json({ message: "Internal server error" }); }
+        // 1. Use .populate() to check if the users still exist
+        // 2. Use .lean() so we can easily modify the javascript object
+        const workspaces = await Workspace.find({ "members.user": req.user._id })
+            .populate("members.user", "_id")
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // 3. Filter out any members where the user account no longer exists
+        const cleanWorkspaces = workspaces.map(ws => {
+            return {
+                ...ws,
+                members: ws.members.filter(m => m.user !== null)
+            };
+        });
+
+        res.status(200).json(cleanWorkspaces);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
 };
 
 const getWorkspaceDetails = async (req, res) => {
@@ -303,29 +320,73 @@ const getArchivedData = async (req, res) => {
     } catch (error) { console.error(error); res.status(500).json({ message: "Server error" }); }
 };
 
-const inviteUserToWorkspace = async (req, res) => { /* Same as your old code */
+const inviteUserToWorkspace = async (req, res) => {
     try {
-        const { workspaceId } = req.params; const { email, role } = req.body;
+        const { workspaceId } = req.params;
+        const { email, role } = req.body;
         const normalizedEmail = email.toLowerCase().trim();
+
         const workspace = await Workspace.findById(workspaceId);
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
+
         const userMemberInfo = workspace.members.find((member) => member.user.toString() === req.user._id.toString());
         if (!userMemberInfo || !["admin", "owner"].includes(userMemberInfo.role)) return res.status(403).json({ message: "Unauthorized" });
+
         const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser && workspace.members.some((m) => m.user.toString() === existingUser._id.toString())) return res.status(400).json({ message: "User already in workspace" });
 
+        // ✅ Updated Email HTML: Uses a clean text link instead of a button or raw URL
+        const generateEmailHtml = (link, workspaceName, inviterName) => `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+                <h2 style="color: #1f2937; margin-top: 0;">You've been invited to TaskMate! 🎉</h2>
+                
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+                    Hello! <br><br>
+                    <strong>${inviterName}</strong> has invited you to collaborate in the <strong>${workspaceName}</strong> workspace.
+                </p>
+                
+                <div style="margin: 24px 0;">
+                    <a href="${link}" style="color: #2563eb; font-size: 16px; font-weight: bold; text-decoration: underline;">
+                        View invitation
+                    </a>
+                </div>
+                
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                    Powered by TaskMate
+                </p>
+            </div>
+        `;
+
+        // Handle Resending an existing invite
         const existingInvite = await WorkspaceInvite.findOne({ email: normalizedEmail, workspaceId, expiresAt: { $gt: new Date() }, status: "pending" });
         if (existingInvite) {
             const invitationLink = `${process.env.FRONTEND_URL}/workspace-invite?token=${existingInvite.token}`;
-            await sendEmail(normalizedEmail, "Invitation (Resent)", `<a href="${invitationLink}">${invitationLink}</a>`);
+            const emailContent = generateEmailHtml(invitationLink, workspace.name, req.user.name || "A team member");
+
+            await sendEmail(normalizedEmail, `Invitation to join ${workspace.name}`, emailContent);
             return res.status(200).json({ message: "Resent" });
         }
-        const inviteToken = jwt.sign({ email: normalizedEmail, workspaceId, role: role || "member" }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+        // Handle sending a brand new invite
+        // ✅ ADDED: workspaceName: workspace.name inside the JWT token!
+        const inviteToken = jwt.sign(
+            { email: normalizedEmail, workspaceId, workspaceName: workspace.name, role: role || "member" },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
         await WorkspaceInvite.create({ user: existingUser?._id, email: normalizedEmail, workspaceId, token: inviteToken, role: role || "member", status: "pending", expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
+
         const invitationLink = `${process.env.FRONTEND_URL}/workspace-invite?token=${inviteToken}`;
-        await sendEmail(normalizedEmail, "Invitation", `<a href="${invitationLink}">${invitationLink}</a>`);
+        const emailContent = generateEmailHtml(invitationLink, workspace.name, req.user.name || "A team member");
+
+        await sendEmail(normalizedEmail, `Invitation to join ${workspace.name}`, emailContent);
+
         return res.status(200).json({ message: "Sent" });
-    } catch (error) { console.error(error); res.status(500).json({ message: "Error" }); }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error" });
+    }
 };
 
 const acceptGenerateInvite = async (req, res) => { /* Same as your old code */

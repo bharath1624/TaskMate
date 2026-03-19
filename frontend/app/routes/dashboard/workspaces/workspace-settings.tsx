@@ -30,10 +30,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useAuth } from "@/provider/auth-context"; // Import Auth for permission check
+import { useAuth } from "@/provider/auth-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trash2, Plus } from "lucide-react";
-import { api } from "@/lib/fetch-util"; // Assuming you have an API util for the raw invite call
+import { api } from "@/lib/fetch-util";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const WORKSPACE_COLORS = [
@@ -73,10 +73,9 @@ export default function WorkspaceSettingsPage() {
         },
     });
 
-    // Remove Member Mutation (Placeholder - You need to add this endpoint to backend)
+    // Remove Member Mutation
     const removeMemberMutation = useMutation({
         mutationFn: async (memberId: string) => {
-            // This matches the new route we just created
             const res = await api.delete(
                 `/workspaces/${workspaceId}/members/${memberId}`
             );
@@ -84,13 +83,13 @@ export default function WorkspaceSettingsPage() {
         },
         onSuccess: () => {
             toast.success("Member removed successfully");
-            // Refetch workspace data to update the list immediately
             queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
         },
         onError: (error: any) => {
             toast.error(error.response?.data?.message || "Failed to remove member");
         }
     });
+
     // State
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
@@ -115,7 +114,6 @@ export default function WorkspaceSettingsPage() {
     if (isLoading) return <Loader />;
     if (!workspace) return null;
 
-    // ✅ Correct permission check: compare workspace owner ID with current user ID
     const isOwner = workspace.owner === user?._id;
 
     const handleSave = () => {
@@ -147,10 +145,11 @@ export default function WorkspaceSettingsPage() {
         return `http://localhost:5000${path.startsWith("/") ? path : `/${path}`}`;
     };
 
-
     return (
-        <div className="flex justify-center pt-5 pb-10">
-            <div className="w-full max-w-3xl space-y-6">
+        /* ✅ Standard layout wrapper that fills the available width next to the sidebar */
+        <div className="w-full pt-5 pb-10 px-4 md:px-8">
+            {/* ✅ Increased max-w to span across the screen, filling the gap */}
+            <div className="w-full max-w-7xl mx-auto space-y-6">
 
                 {/* 1. GENERAL SETTINGS CARD */}
                 <Card>
@@ -214,7 +213,7 @@ export default function WorkspaceSettingsPage() {
                     </CardContent>
                 </Card>
 
-                {/* 2. MEMBERS MANAGEMENT CARD (NEW) */}
+                {/* 2. MEMBERS MANAGEMENT CARD */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Workspace Members</CardTitle>
@@ -243,7 +242,6 @@ export default function WorkspaceSettingsPage() {
                                         <SelectContent>
                                             <SelectItem value="member">Member</SelectItem>
                                             <SelectItem value="admin">Admin</SelectItem>
-                                            <SelectItem value="viewer">Viewer</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

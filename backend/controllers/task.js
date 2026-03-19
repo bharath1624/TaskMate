@@ -688,16 +688,26 @@ const addTaskAttachment = async (req, res) => {
                 return res.status(400).json({ message: "File is required" });
             }
 
+            // req.file.path = the Cloudinary URL returned after upload
+            // For PDFs we must append fl_inline so the browser displays
+            // them instead of downloading. Cloudinary URL format:
+            // https://res.cloudinary.com/cloud/image/upload/v123/folder/file.pdf
+            //                                                 ↑ insert fl_inline here
+            let fileUrl = req.file.path;
+
+            if (req.file.mimetype === "application/pdf") {
+                // Insert fl_inline transformation into the Cloudinary URL
+                fileUrl = fileUrl.replace("/upload/", "/upload/fl_inline/");
+            }
+
             attachment = {
                 type: "file",
                 fileName: req.file.originalname,
-                // Make sure this points to your backend URL correctly
-                fileUrl: `/uploads/${req.file.filename}`,
+                fileUrl,
                 fileType: req.file.mimetype,
                 fileSize: req.file.size,
                 uploadedBy: req.user._id,
             };
-
         } else {
             attachment = {
                 type: "url",
@@ -720,6 +730,15 @@ const addTaskAttachment = async (req, res) => {
 
         res.status(201).json(task);
     } catch (error) {
+        // Multer-specific errors (file size, wrong type)
+        if (error.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({
+                message: "File too large. Maximum size is 10 MB.",
+            });
+        }
+        if (error.message?.includes("not supported") || error.message?.includes("not allowed")) {
+            return res.status(415).json({ message: error.message });
+        }
         console.error("ADD ATTACHMENT ERROR:", error);
         res.status(500).json({ message: "Internal server error" });
     }
@@ -825,9 +844,7 @@ const markCommentsAsRead = async (req, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
 // HELPER: verify the user can access this task
-// ─────────────────────────────────────────────
 const getTaskContext = async (taskId, userId) => {
     const task = await Task.findById(taskId);
     if (!task) return null;
@@ -847,10 +864,8 @@ const getTaskContext = async (taskId, userId) => {
     return { task, project, workspace };
 };
 
-// ─────────────────────────────────────────────
 // POST /tasks/:taskId/time/start
 // Start a new timer session. Stops any currently running session first.
-// ─────────────────────────────────────────────
 export const startTimer = async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -895,10 +910,8 @@ export const startTimer = async (req, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
 // POST /tasks/:taskId/time/stop
 // Stop the currently running timer for this user on this task
-// ─────────────────────────────────────────────
 export const stopTimer = async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -929,10 +942,9 @@ export const stopTimer = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
-// ─────────────────────────────────────────────
+
 // GET /tasks/:taskId/time
 // Get time logs based on Role (Member = Own, Admin/Owner = All)
-// ─────────────────────────────────────────────
 export const getTimeLogs = async (req, res) => {
     try {
         const { taskId } = req.params;
@@ -979,10 +991,10 @@ export const getTimeLogs = async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 };
-// ─────────────────────────────────────────────
+
 // DELETE /tasks/:taskId/time/:logId
 // Delete a specific time log entry
-// ─────────────────────────────────────────────
+
 export const deleteTimeLog = async (req, res) => {
     try {
         const { taskId, logId } = req.params;
@@ -1018,9 +1030,7 @@ export const deleteTimeLog = async (req, res) => {
     }
 };
 
-// ─────────────────────────────────────────────
 // INTERNAL: Recalculate task's actualHours from all completed logs
-// ─────────────────────────────────────────────
 const recalcActualHours = async (taskId) => {
     const logs = await TimeLog.find({ task: taskId, endTime: { $ne: null } });
     const totalSeconds = logs.reduce((sum, l) => sum + (l.duration || 0), 0);

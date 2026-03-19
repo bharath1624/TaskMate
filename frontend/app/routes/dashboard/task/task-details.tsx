@@ -29,7 +29,11 @@ import {
 import { useAuth } from "@/provider/auth-context";
 import type { Project, Task } from "@/types";
 import { formatDistanceToNow } from "date-fns";
-import { Eye, EyeOff } from "lucide-react";
+import {
+    Eye, EyeOff, Archive, ArchiveRestore, Trash2, Calendar,
+    LayoutList, Paperclip, MessageSquare, Activity,
+    Users, CircleDot, Flag, Clock
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { useDeleteTaskMutation } from "@/hooks/use-task";
@@ -65,12 +69,12 @@ const TaskDetails = () => {
     const { mutate: achievedTask, isPending: isAchieved } = useAchievedTaskMutation();
     const { mutate: deleteTask, isPending: isDeleting } = useDeleteTaskMutation();
 
-    if (isLoading) return <div><Loader /></div>;
+    if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader /></div>;
 
     if (!data) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="text-2xl font-bold">Task not found</div>
+            <div className="flex items-center justify-center h-screen bg-background text-foreground">
+                <div className="text-2xl font-bold text-muted-foreground">Task not found</div>
             </div>
         );
     }
@@ -90,6 +94,7 @@ const TaskDetails = () => {
     if (currentUserId === ownerId) currentUserRole = "owner";
     else if (isAdminOrOwner) currentUserRole = "admin";
     const isOwner = currentUserId === ownerId;
+
     const handleWatchTask = () => {
         watchTask({ taskId: task._id }, {
             onSuccess: () => toast.success("Task watched"),
@@ -115,109 +120,179 @@ const TaskDetails = () => {
     };
 
     return (
-        <div className="container mx-auto p-0 py-4 md:px-4">
-            <div className="flex flex-col md:flex-row items-center justify-between mb-6">
-                <div className="flex flex-col md:flex-row md:items-center">
-                    <h1 className="text-xl md:text-2xl font-bold">{task.title}</h1>
-                    {task.isArchived && <Badge className="ml-2" variant={"outline"}>Archived</Badge>}
+        <div className="min-h-screen bg-background text-foreground pb-12">
+
+            {/* ================= STICKY TOP BAR (ACTIONS) ================= */}
+            <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/40 px-4 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className="uppercase text-[10px] tracking-wider font-bold rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border-none px-2 py-1">
+                        Task
+                    </Badge>
+                    <Badge className={`capitalize shadow-none border-none px-2 py-1 ${priorityStyles[task.priority]}`}>
+                        {task.priority}
+                    </Badge>
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <Calendar className="size-3.5" />
+                        Created {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+                    </span>
+                    {task.isArchived && (
+                        <Badge variant="destructive" className="uppercase text-[10px] tracking-wider font-semibold rounded-md">
+                            Archived
+                        </Badge>
+                    )}
                 </div>
 
-                <div className="flex space-x-2 mt-4 md:mt-0">
-                    <Button variant={"outline"} size="sm" onClick={handleWatchTask} className="w-fit" disabled={isWatching}>
-                        {isUserWatching ? <><EyeOff className="mr-2 size-4" /> Unwatch</> : <><Eye className="mr-2 size-4" /> Watch</>}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <Button variant="outline" size="sm" onClick={handleWatchTask} disabled={isWatching} className="h-8 shadow-sm border-border/50">
+                        {isUserWatching ? <><EyeOff className="mr-2 size-3.5" /> Unwatch</> : <><Eye className="mr-2 size-3.5" /> Watch</>}
                     </Button>
 
                     {isAdminOrOwner && (
-                        <Button variant="outline" size="sm" onClick={handleAchievedTask} className="w-fit" disabled={isAchieved}>
-                            {task.isArchived ? "Unarchive" : "Archive"}
-                        </Button>
+                        <>
+                            <Button variant="outline" size="sm" onClick={handleAchievedTask} disabled={isAchieved} className="h-8 shadow-sm border-border/50">
+                                {task.isArchived ? <><ArchiveRestore className="mr-2 size-3.5" /> Unarchive</> : <><Archive className="mr-2 size-3.5" /> Archive</>}
+                            </Button>
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm" disabled={isDeleting} className="h-8 shadow-sm">
+                                        <Trash2 className="mr-2 size-3.5" />
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="rounded-2xl">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete the task and remove all associated data, comments, and attachments.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={executeDelete} className="bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                                            Confirm Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </>
                     )}
                 </div>
-            </div>
+            </header>
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+            {/* ================= MAIN CONTENT LAYOUT ================= */}
+            <div className="max-w-[1500px] mx-auto w-full px-4 sm:px-8 pt-6 sm:pt-8 flex flex-col lg:flex-row gap-8 items-start">
 
-                {/* Left Column (Master Height) */}
-                <div className="lg:col-span-9 flex flex-col gap-6">
-                    <div className="bg-card rounded-lg p-6 shadow-sm">
-                        <div className="flex flex-col md:flex-row justify-between items-start mb-4">
-                            <div>
-                                <Badge className={`mb-2 capitalize ${priorityStyles[task.priority]}`}>
-                                    Priority: {task.priority}
-                                </Badge>
-                                <TaskTitle title={task.title} taskId={task._id} canEdit={isAdminOrOwner} />
-                                <div className="text-sm font-sm">
-                                    Created : {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+                {/* ⬅️ LEFT COLUMN: MAIN TASK CONTENT */}
+                <div className="flex-1 w-full flex flex-col gap-6 min-w-0">
+
+                    {/* Header & Properties Card */}
+                    <div className="bg-card border border-border/50 rounded-3xl p-6 sm:p-8 shadow-sm">
+                        <div className="mb-6">
+                            <TaskTitle title={task.title} taskId={task._id} canEdit={isAdminOrOwner} />
+                        </div>
+
+                        {/* Properties Grid (Inline SaaS Style) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-border/40">
+                            {/* Status */}
+                            <div className="flex flex-col gap-2.5">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <CircleDot className="size-3.5" /> Status
+                                </span>
+                                <div>
+                                    <TaskStatusSelector status={task.status} taskId={task._id} canEdit={isAdminOrOwner} />
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2 mt-4 md:mt-0">
-                                <TaskStatusSelector status={task.status} taskId={task._id} canEdit={isAdminOrOwner} />
-                                {isAdminOrOwner && (
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="destructive" size="sm" disabled={isDeleting} className="hidden md:block">
-                                                {isDeleting ? "Deleting..." : "Delete Task"}
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={executeDelete} className="bg-red-600 hover:bg-red-700">Confirm</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
+
+                            {/* Priority */}
+                            <div className="flex flex-col gap-2.5">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Flag className="size-3.5" /> Priority
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <TaskPrioritySelector priority={task.priority} taskId={task._id} canEdit={isAdminOrOwner} />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="mb-6">
-                            <h3 className="text-sm font-medium">Description</h3>
-                            <TaskDescription description={task.description || ""} taskId={task._id} canEdit={isAdminOrOwner} />
-                        </div>
-
-                        <div className="space-y-6">
-                            {/* ✅ FILTERED ASSIGNEES: Exclude Owner */}
-                            <TaskAssigneesSelector
-                                task={task}
-                                assignees={task.assignees}
-                                projectMembers={(project.members as any).filter(
-                                    (m: any) => m.user._id !== ownerId
-                                )}
-                                canEdit={isAdminOrOwner}
-                            />
-
-                            <h3 className="text-sm font-medium">Task Priority</h3>
-                            <TaskPrioritySelector priority={task.priority} taskId={task._id} canEdit={isAdminOrOwner} />
-                            <TaskAttachments task={task} workspaceOwnerId={ownerId} currentUserRole={currentUserRole} />
-                            <SubTasksDetails subTasks={task.subtasks || []} taskId={task._id} canEdit={isAdminOrOwner} />
+                            {/* Assignees */}
+                            <div className="flex flex-col gap-2.5">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                    <Users className="size-3.5" /> Assignees
+                                </span>
+                                <div>
+                                    <TaskAssigneesSelector
+                                        task={task}
+                                        assignees={task.assignees}
+                                        projectMembers={(project.members as any).filter(
+                                            (m: any) => m.user._id !== ownerId
+                                        )}
+                                        canEdit={isAdminOrOwner}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <CommentSection taskId={task._id} members={project.members as any} assignees={data.task.assignees} />
+                    {/* Description Card */}
+                    <div className="bg-card border border-border/50 rounded-3xl p-6 sm:p-8 shadow-sm">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-5 flex items-center gap-2">
+                            <LayoutList className="size-4" /> Description
+                        </h3>
+                        <div className="prose dark:prose-invert max-w-none">
+                            <TaskDescription description={task.description || ""} taskId={task._id} canEdit={isAdminOrOwner} />
+                        </div>
+                    </div>
+
+                    {/* Attachments Card */}
+                    <div className="bg-card border border-border/50 rounded-3xl p-4 sm:p-5 shadow-sm">
+                        <TaskAttachments task={task} workspaceOwnerId={ownerId} currentUserRole={currentUserRole} members={project.members} />
+                    </div>
+
+                    {/* Subtasks Card */}
+                    <div className="bg-card border border-border/50 rounded-3xl p-6 sm:p-8 shadow-sm">
+                        <SubTasksDetails subTasks={task.subtasks || []} taskId={task._id} canEdit={isAdminOrOwner} />
+                    </div>
+
+                    {/* Comments Card */}
+                    <div className="bg-card border border-border/50 rounded-3xl p-6 sm:p-8 shadow-sm">
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-6 flex items-center gap-2">
+                            <MessageSquare className="size-4" /> Discussion
+                        </h3>
+                        <CommentSection taskId={task._id} members={project.members as any} assignees={data.task.assignees} />
+                    </div>
                 </div>
 
-                {/* Right Column (Slave Height) */}
-                <div className="lg:col-span-3 relative min-h-[500px]">
-                    <div className="flex flex-col gap-6 lg:absolute lg:inset-0 overflow-y-auto pt-1">
+                {/* ➡️ RIGHT COLUMN: CONTEXT SIDEBAR */}
+                <div className="w-full lg:w-[350px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-24">
 
+                    {/* Watchers Card */}
+                    <div className="bg-card border border-border/50 rounded-[1.25rem] p-5 shadow-sm">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                            <Eye className="size-3.5" /> Watchers
+                        </h3>
                         <Watchers watchers={task.watchers || []} />
+                    </div>
 
+                    {/* Time Tracker Card */}
+                    <div className="bg-card border border-border/50 rounded-[1.25rem] p-5 shadow-sm">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                            <Clock className="size-3.5" /> Time Tracking
+                        </h3>
                         <TaskTimeTracker
                             taskId={task._id}
                             canEdit={canEdit}
                             isOwner={isOwner}
                         />
-
-                        <div className="flex-1 min-h-0">
-                            <TaskActivity resourceId={task._id} />
-                        </div>
-
                     </div>
+
+                    {/* Activity Feed Card */}
+                    <div className="bg-card border border-border/50 rounded-[1.25rem] p-5 shadow-sm flex flex-col max-h-[600px]">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-3 mb-4 flex items-center gap-1.5 shrink-0">
+                            <Activity className="size-3.5" /> Activity Log
+                        </h3>
+                        <TaskActivity resourceId={task._id} />
+                    </div>
+
                 </div>
             </div>
         </div>

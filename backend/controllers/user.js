@@ -20,7 +20,7 @@ const getUserProfile = async (req, res) => {
 
 const updateUserProfile = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, removeAvatar } = req.body; // ✅ Extract removeAvatar from req.body
 
         const user = await User.findById(req.user._id);
 
@@ -32,8 +32,14 @@ const updateUserProfile = async (req, res) => {
             user.name = name;
         }
 
-        if (req.file) {
-            user.profilePicture = `/uploads/${req.file.filename}`;
+        // ✅ Check if the user clicked "Remove Avatar" first
+        if (removeAvatar === "true") {
+            user.profilePicture = ""; // Clear it from the database
+            console.log("REMOVED profilePicture");
+        }
+        // ✅ Otherwise, if they uploaded a new file, save the Cloudinary URL
+        else if (req.file) {
+            user.profilePicture = req.file.path;
             console.log("SETTING profilePicture:", user.profilePicture);
         }
 
