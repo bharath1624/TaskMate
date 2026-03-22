@@ -96,7 +96,7 @@ export const CreateWorkspace = ({
                                     <FormItem>
                                         <FormLabel>Name</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="Workspace Name" />
+                                            <Input {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -111,7 +111,6 @@ export const CreateWorkspace = ({
                                         <FormControl>
                                             <Textarea
                                                 {...field}
-                                                placeholder="Workspace Description"
                                                 rows={3}
                                             />
                                         </FormControl>

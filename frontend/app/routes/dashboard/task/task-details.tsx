@@ -95,17 +95,19 @@ const TaskDetails = () => {
     else if (isAdminOrOwner) currentUserRole = "admin";
     const isOwner = currentUserId === ownerId;
 
+    // ✅ FIX: Dynamic Watch/Unwatch Toast Messages
     const handleWatchTask = () => {
         watchTask({ taskId: task._id }, {
-            onSuccess: () => toast.success("Task watched"),
-            onError: () => toast.error("Failed to watch task"),
+            onSuccess: () => toast.success(isUserWatching ? "Task unwatched" : "Task watched"),
+            onError: () => toast.error(isUserWatching ? "Failed to unwatch task" : "Failed to watch task"),
         });
     };
 
+    // ✅ FIX: Dynamic Archive/Unarchive Toast Messages
     const handleAchievedTask = () => {
         achievedTask({ taskId: task._id }, {
-            onSuccess: () => toast.success("Task achieved"),
-            onError: () => toast.error("Failed to achieve task"),
+            onSuccess: () => toast.success(task.isArchived ? "Task unarchived" : "Task archived"),
+            onError: () => toast.error(task.isArchived ? "Failed to unarchive task" : "Failed to archive task"),
         });
     };
 
@@ -143,9 +145,11 @@ const TaskDetails = () => {
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                    <Button variant="outline" size="sm" onClick={handleWatchTask} disabled={isWatching} className="h-8 shadow-sm border-border/50">
-                        {isUserWatching ? <><EyeOff className="mr-2 size-3.5" /> Unwatch</> : <><Eye className="mr-2 size-3.5" /> Watch</>}
-                    </Button>
+                    {currentUserRole !== "member" && (
+                        <Button variant="outline" size="sm" onClick={handleWatchTask} disabled={isWatching} className="h-8 shadow-sm border-border/50">
+                            {isUserWatching ? <><EyeOff className="mr-2 size-3.5" /> Unwatch</> : <><Eye className="mr-2 size-3.5" /> Watch</>}
+                        </Button>
+                    )}
 
                     {isAdminOrOwner && (
                         <>

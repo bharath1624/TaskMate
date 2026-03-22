@@ -6,12 +6,14 @@ interface ProjectListProps {
     workspaceId: string;
     projects: Project[];
     onCreateProject: () => void;
+    canCreateProject: boolean; // ✅ ADDED THIS PROP
 }
 
 export const ProjectList = ({
     workspaceId,
     projects,
     onCreateProject,
+    canCreateProject, // ✅ DESTRUCTURED HERE
 }: ProjectListProps) => {
     return (
         <div>
@@ -20,13 +22,18 @@ export const ProjectList = ({
                 {projects.length === 0 ? (
                     <NoDataFound
                         title="No projects found"
-                        description="Create a project to get started"
-                        buttonText="Create Project"
-                        buttonAction={onCreateProject}
+                        // ✅ Change description based on role
+                        description={canCreateProject ? "Create a project to get started" : "No projects have been added to this workspace yet."}
+
+                        // ✅ Only pass button props if they have permission
+                        {...(canCreateProject && {
+                            buttonText: "Create Project",
+                            buttonAction: onCreateProject,
+                        })}
                     />
                 ) : (
                     projects.map((project) => {
-                        // ✅ FIX: Filter out archived tasks first
+                        // Filter out archived tasks first
                         const activeTasks = project.tasks.filter((task) => !task.isArchived);
 
                         // 1. Calculate Total (only active tasks)

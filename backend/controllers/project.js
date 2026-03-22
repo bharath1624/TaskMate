@@ -108,27 +108,33 @@ const getProjectTasks = async (req, res) => {
         const project = await Project.findById(projectId).populate("members.user", "name email profilePicture");
         if (!project) return res.status(404).json({ message: "Project not found" });
 
+        // 🔥 FIX 1: Instantly remove dangling references (deleted users) from the project
+        project.members = project.members.filter(member => member.user !== null);
+
         const workspace = await Workspace.findById(project.workspace).populate("members.user", "name email profilePicture");
         if (!workspace) return res.status(404).json({ message: "Workspace not found" });
 
+        // 🔥 FIX 2: Also clean workspace members just to be completely safe!
+        workspace.members = workspace.members.filter(member => member.user !== null);
+
         // 1. Determine Roles
         const isOwner = isWorkspaceOwner(workspace, userId);
-        const isAdmin = isWorkspaceAdmin(workspace, userId); // New Check
-        const isProjectMember = project.members.some(m => m.user._id.toString() === userId);
+        const isAdmin = isWorkspaceAdmin(workspace, userId);
+
+        // 🔥 FIX 3: Added Optional Chaining (?.) to prevent crashes
+        const isProjectMember = project.members.some(m => m.user?._id?.toString() === userId);
 
         // 2. Access Check (Owner/Admin can see everything, Member must be assigned)
-        // If you are an Admin but NOT added to project, usually you can't see it (unless God mode logic applied to admins too).
-        // Assuming Admin MUST be added to see it, OR assume Admin sees all like Owner. 
-        // Based on your prompt "if he is added into that project", we stick to isProjectMember check for non-owners.
         if (!isOwner && !isProjectMember) {
             return res.status(403).json({ message: "Access denied." });
         }
 
         // 3. Determine Editing Rights (Buttons)
-        const projectMemberDef = project.members.find(m => m.user._id.toString() === userId);
+        // 🔥 FIX 4: Added Optional Chaining (?.) here as well
+        const projectMemberDef = project.members.find(m => m.user?._id?.toString() === userId);
         const isProjectAdminRole = projectMemberDef?.role === 'admin';
 
-        // ✅ FIX: Grant edit rights if Owner OR Workspace Admin OR Project Admin
+        // Grant edit rights if Owner OR Workspace Admin OR Project Admin
         const canEdit = isOwner || isAdmin || isProjectAdminRole;
 
         // 4. Task Filtering
@@ -140,7 +146,7 @@ const getProjectTasks = async (req, res) => {
             project,
             workspaceMembers: workspace.members,
             tasks,
-            canEdit // <--- This will now be TRUE for Admins
+            canEdit
         });
 
     } catch (error) {

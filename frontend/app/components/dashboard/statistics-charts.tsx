@@ -75,6 +75,11 @@ export const StatisticsCharts = ({
         d => d.completed + d.inProgress + d.todo > 0
     );
 
+    const hasProjectStatus = normalizedProjectStatusData.some(d => d.value > 0);
+    const hasTaskPriority = taskPriorityData.some(d => d.value > 0);
+    const hasWorkspaceProductivity = workspaceProductivityData.some(
+        d => d.total > 0 || d.completed > 0
+    );
     return (
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-8">
             <Card className="lg:col-span-2">
@@ -208,35 +213,43 @@ export const StatisticsCharts = ({
 
                 <CardContent>
                     <div className="flex flex-col items-center gap-6">
-                        {/* PIE CHART */}
-                        <ChartContainer
-                            className="h-[280px] w-[300px]"
-                            config={{
-                                Completed: { color: "#10b981" },
-                                "In Progress": { color: "#3b82f6" },
-                                Planning: { color: "#f59e0b" },
-                            }}
-                        >
-                            <PieChart>
-                                <Pie
-                                    data={normalizedProjectStatusData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={65}
-                                    outerRadius={95}
-                                    paddingAngle={2}
-                                    dataKey="value"
-                                    label={({ percent }) =>
-                                        percent > 0 ? `${(percent * 100).toFixed(0)}%` : ""
-                                    }
-                                    labelLine={false}
+                        {hasProjectStatus ? (
+                            <div className="flex flex-col items-center gap-6">
+                                {/* PIE CHART */}
+                                <ChartContainer
+                                    className="h-[280px] w-[300px]"
+                                    config={{
+                                        Completed: { color: "#10b981" },
+                                        "In Progress": { color: "#3b82f6" },
+                                        Planning: { color: "#f59e0b" },
+                                    }}
                                 >
-                                    {normalizedProjectStatusData.map((entry, index) => (
-                                        <Cell key={index} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ChartContainer>
+                                    <PieChart>
+                                        <Pie
+                                            data={normalizedProjectStatusData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={65}
+                                            outerRadius={95}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            label={({ percent }) =>
+                                                percent > 0 ? `${(percent * 100).toFixed(0)}%` : ""
+                                            }
+                                            labelLine={false}
+                                        >
+                                            {normalizedProjectStatusData.map((entry, index) => (
+                                                <Cell key={index} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                    </PieChart>
+                                </ChartContainer>
+                            </div>) : (
+                            <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground text-sm gap-2">
+                                <ChartPie className="size-8 opacity-40" />
+                                <p className="font-medium">No project status data</p>
+                            </div>
+                        )}
 
                         {/* LEGEND BELOW */}
                         <div className="space-y-3 text-sm w-full max-w-xs">
@@ -275,39 +288,46 @@ export const StatisticsCharts = ({
                 </CardHeader>
 
                 <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
-                    <div className="min-w-[350px]">
-                        <ChartContainer
-                            className="h-[300px]"
-                            config={{
-                                High: { color: "#ef4444" },
-                                Medium: { color: "#f59e0b" },
-                                Low: { color: "#6b7280" },
-                            }}
-                        >
-                            <PieChart>
-                                <Pie
-                                    data={taskPriorityData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={2}
-                                    minAngle={10}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    label={({ name, percent }) =>
-                                        percent > 0 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
-                                    }
-                                    labelLine={false}
-                                >
-                                    {taskPriorityData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <ChartTooltip />
-                            </PieChart>
-                        </ChartContainer>
-                    </div>
+                    {hasTaskPriority ? (
+                        <div className="min-w-[350px]">
+                            <ChartContainer
+                                className="h-[300px]"
+                                config={{
+                                    High: { color: "#ef4444" },
+                                    Medium: { color: "#f59e0b" },
+                                    Low: { color: "#6b7280" },
+                                }}
+                            >
+                                <PieChart>
+                                    <Pie
+                                        data={taskPriorityData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={2}
+                                        minAngle={10}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        label={({ name, percent }) =>
+                                            percent > 0 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+                                        }
+                                        labelLine={false}
+                                    >
+                                        {taskPriorityData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <ChartTooltip />
+                                </PieChart>
+                            </ChartContainer>
+                        </div>
+                    ) : (
+                        <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                            <ChartPie className="size-8 opacity-40" />
+                            <p className="font-medium">No tasks yet</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -323,70 +343,77 @@ export const StatisticsCharts = ({
                     <ChartBarBig className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
-                    <div className="flex gap-6 items-center min-w-[350px]">
+                    {hasWorkspaceProductivity ? (
+                        <div className="flex gap-6 items-center min-w-[350px]">
 
-                        {/* Chart */}
-                        <div className="flex-1">
-                            <ChartContainer
-                                className="h-[300px]"
-                                config={{
-                                    completed: { color: "#3b82f6" },
-                                    total: { color: "#000000" },
-                                }}
-                            >
-                                <BarChart
-                                    data={workspaceProductivityData}
-                                    barGap={0}
-                                    barSize={20}
+                            {/* Chart */}
+                            <div className="flex-1">
+                                <ChartContainer
+                                    className="h-[300px]"
+                                    config={{
+                                        completed: { color: "#3b82f6" },
+                                        total: { color: "#000000" },
+                                    }}
                                 >
-                                    <XAxis
-                                        dataKey="name"
-                                        tickLine={false}
-                                        axisLine={false}
-                                        fontSize={12}
-                                        interval={0}
-                                        // ✅ Use tickFormatter to cut off long names instead of rotating them
-                                        tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
-                                    />
-                                    <YAxis
-                                        stroke="#888888"
-                                        fontSize={12}
-                                        tickLine={false}
-                                        axisLine={false}
-                                    />
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                    <BarChart
+                                        data={workspaceProductivityData}
+                                        barGap={0}
+                                        barSize={20}
+                                    >
+                                        <XAxis
+                                            dataKey="name"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            fontSize={12}
+                                            interval={0}
+                                            // ✅ Use tickFormatter to cut off long names instead of rotating them
+                                            tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
+                                        />
+                                        <YAxis
+                                            stroke="#888888"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <ChartTooltip content={<ChartTooltipContent />} />
 
-                                    <Bar
-                                        dataKey="total"
-                                        fill="#000"
-                                        radius={[4, 4, 0, 0]}
-                                        name="Total Tasks "
-                                    />
-                                    <Bar
-                                        dataKey="completed"
-                                        fill="#3b82f6"
-                                        radius={[4, 4, 0, 0]}
-                                        name="Completed Tasks "
-                                    />
-                                </BarChart>
-                            </ChartContainer>
-                        </div>
-
-                        {/* RIGHT SIDE LEGEND */}
-                        <div className="space-y-3 text-sm">
-                            <div className="flex items-center gap-3">
-                                <span className="h-3 w-3 bg-black boarder-sm" />
-                                <span>Total Tasks</span>
+                                        <Bar
+                                            dataKey="total"
+                                            fill="#000"
+                                            radius={[4, 4, 0, 0]}
+                                            name="Total Tasks "
+                                        />
+                                        <Bar
+                                            dataKey="completed"
+                                            fill="#3b82f6"
+                                            radius={[4, 4, 0, 0]}
+                                            name="Completed Tasks "
+                                        />
+                                    </BarChart>
+                                </ChartContainer>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <span className="h-3 w-3 bg-blue-500 boarder-sm" />
-                                <span>Completed Tasks</span>
-                            </div>
-                        </div>
+                            {/* RIGHT SIDE LEGEND */}
+                            <div className="space-y-3 text-sm">
+                                <div className="flex items-center gap-3">
+                                    <span className="h-3 w-3 bg-black boarder-sm" />
+                                    <span>Total Tasks</span>
+                                </div>
 
-                    </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="h-3 w-3 bg-blue-500 boarder-sm" />
+                                    <span>Completed Tasks</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    ) : (
+                        <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                            <ChartBarBig className="size-8 opacity-40" />
+                            <p className="font-medium">No projects yet</p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

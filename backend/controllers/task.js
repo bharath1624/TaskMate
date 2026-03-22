@@ -521,13 +521,28 @@ const watchTask = async (req, res) => {
             });
         }
 
+        // ✅ NEW: Fetch the workspace to check who the owner is
+        // (Make sure the field name matches your Project schema, e.g., 'workspaceId' or 'workspace')
+        const workspace = await Workspace.findById(project.workspaceId || project.workspace);
+
+        if (!workspace) {
+            return res.status(404).json({
+                message: "Workspace not found",
+            });
+        }
+
+        // ✅ NEW: Check if the user is the Workspace Owner
+        const isWorkspaceOwner = workspace.owner.toString() === req.user._id.toString();
+
+        // Check if the user is a Project Member
         const isMember = project.members.some(
             (member) => member.user.toString() === req.user._id.toString()
         );
 
-        if (!isMember) {
+        // ✅ FIX: Allow access if they are EITHER a member OR the owner
+        if (!isMember && !isWorkspaceOwner) {
             return res.status(403).json({
-                message: "You are not a member of this project",
+                message: "You don't have permission to watch this task",
             });
         }
 
@@ -578,15 +593,29 @@ const achievedTask = async (req, res) => {
             });
         }
 
+        // ✅ NEW: Fetch the workspace to check who the owner is
+        const workspace = await Workspace.findById(project.workspace || project.workspaceId);
+
+        if (!workspace) {
+            return res.status(404).json({
+                message: "Workspace not found",
+            });
+        }
+
+        // ✅ NEW: Check if the user is the Workspace Owner
+        const isWorkspaceOwner = workspace.owner.toString() === req.user._id.toString();
+
         const isMember = project.members.some(
             (member) => member.user.toString() === req.user._id.toString()
         );
 
-        if (!isMember) {
+        // ✅ FIX: Allow access if they are EITHER a member OR the workspace owner
+        if (!isMember && !isWorkspaceOwner) {
             return res.status(403).json({
-                message: "You are not a member of this project",
+                message: "You do not have permission to archive this task",
             });
         }
+
         const isAchieved = task.isArchived;
 
         task.isArchived = !isAchieved;
@@ -594,8 +623,7 @@ const achievedTask = async (req, res) => {
 
         // record activity
         await recordActivity(req.user._id, "updated_task", "Task", taskId, {
-            description: `${isAchieved ? "unachieved" : "achieved"} task ${task.title
-                }`,
+            description: `${isAchieved ? "unarchived" : "archived"} task ${task.title}`,
         });
 
         res.status(200).json(task);
