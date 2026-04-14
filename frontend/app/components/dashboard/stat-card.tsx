@@ -81,22 +81,18 @@ export const StatsCard = ({ data }: { data: StatsCardProps }) => {
 // 2. The NEW standalone Time Tracker Card
 export const TimeTrackerStatCard = ({ data }: { data: StatsCardProps }) => {
     return (
-        <Card className="h-full relative overflow-hidden bg-linear-to-br from-blue-600 to-indigo-900 border-none text-white shadow-md">
-            {/* Beautiful background glow effects */}
-            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 blur-2xl rounded-full pointer-events-none"></div>
-            <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-blue-400/20 blur-xl rounded-full pointer-events-none"></div>
-
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-                <CardTitle className="text-sm font-medium text-blue-100 uppercase tracking-wider">Total Time Tracked</CardTitle>
-                <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
-                    <Clock className="h-4 w-4 text-white" />
-                </div>
+        <Card className="h-full shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Time Tracked
+                </CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="relative z-10 mt-1">
-                <div className="text-4xl font-bold font-mono tracking-tight drop-shadow-md">
+            <CardContent>
+                <div className="text-2xl sm:text-3xl font-bold font-mono tracking-tight">
                     {formatDuration(data.totalWorkspaceTime || 0)}
                 </div>
-                <p className="text-xs text-blue-200 mt-2 font-medium">
+                <p className="text-xs text-muted-foreground mt-1">
                     Across all Projects
                 </p>
             </CardContent>

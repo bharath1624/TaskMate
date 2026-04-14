@@ -64,7 +64,7 @@ const DashboardLayout = () => {
                 />
 
 
-                <main className="flex-1 overflow-y-auto">
+                <main className="flex-1 overflow-y-auto page-enter">
                     <div className="container mx-auto px-2 sm:px-6 lg:px-8">
                         <Outlet />
                     </div>

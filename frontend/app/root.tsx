@@ -25,12 +25,26 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+// Inline script to prevent FOUC — runs before React hydrates
+const themeScript = `
+(function() {
+  try {
+    var t = localStorage.getItem('taskmate-theme');
+    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch(e) {}
+})();
+`;
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <Meta />
         <Links />
+        {/* Theme script must run before body renders to avoid flash */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
         {children}

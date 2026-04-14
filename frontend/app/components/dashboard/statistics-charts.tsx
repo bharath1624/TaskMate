@@ -287,11 +287,12 @@ export const StatisticsCharts = ({
                     </div>
                 </CardHeader>
 
-                <CardContent className="w-full overflow-x-auto md:overflow-x-hidden">
+                {/* ✅ Replaced overflow classes with flex-center to perfectly align the chart */}
+                <CardContent className="flex flex-col items-center justify-center w-full pb-6">
                     {hasTaskPriority ? (
-                        <div className="min-w-[350px]">
+                        <div className="w-full flex items-center justify-center">
                             <ChartContainer
-                                className="h-[300px]"
+                                className="h-[300px] w-full max-w-[350px]"
                                 config={{
                                     High: { color: "#ef4444" },
                                     Medium: { color: "#f59e0b" },
@@ -323,7 +324,7 @@ export const StatisticsCharts = ({
                             </ChartContainer>
                         </div>
                     ) : (
-                        <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
+                        <div className="h-[300px] w-full flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
                             <ChartPie className="size-8 opacity-40" />
                             <p className="font-medium">No tasks yet</p>
                         </div>
@@ -352,7 +353,8 @@ export const StatisticsCharts = ({
                                     className="h-[300px]"
                                     config={{
                                         completed: { color: "#3b82f6" },
-                                        total: { color: "#000000" },
+                                        // ✅ FIX: Removed the hsl() wrapper. Just var(--foreground) since your CSS already has oklch()
+                                        total: { color: "var(--foreground)" },
                                     }}
                                 >
                                     <BarChart
@@ -366,7 +368,6 @@ export const StatisticsCharts = ({
                                             axisLine={false}
                                             fontSize={12}
                                             interval={0}
-                                            // ✅ Use tickFormatter to cut off long names instead of rotating them
                                             tickFormatter={(value) => value.length > 12 ? `${value.substring(0, 12)}...` : value}
                                         />
                                         <YAxis
@@ -380,13 +381,13 @@ export const StatisticsCharts = ({
 
                                         <Bar
                                             dataKey="total"
-                                            fill="#000"
+                                            fill="var(--color-total)"
                                             radius={[4, 4, 0, 0]}
                                             name="Total Tasks "
                                         />
                                         <Bar
                                             dataKey="completed"
-                                            fill="#3b82f6"
+                                            fill="var(--color-completed)"
                                             radius={[4, 4, 0, 0]}
                                             name="Completed Tasks "
                                         />
@@ -397,13 +398,13 @@ export const StatisticsCharts = ({
                             {/* RIGHT SIDE LEGEND */}
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center gap-3">
-                                    <span className="h-3 w-3 bg-black boarder-sm" />
-                                    <span>Total Tasks</span>
+                                    <span className="h-3 w-3 bg-foreground rounded-sm" />
+                                    <span className="text-foreground font-medium">Total Tasks</span>
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <span className="h-3 w-3 bg-blue-500 boarder-sm" />
-                                    <span>Completed Tasks</span>
+                                    <span className="h-3 w-3 bg-blue-500 rounded-sm" />
+                                    <span className="text-foreground font-medium">Completed Tasks</span>
                                 </div>
                             </div>
 

@@ -45,7 +45,7 @@ export const SidebarNav = ({
                         variant={isActive ? "outline" : "ghost"}
                         className={cn(
                             "justify-start",
-                            isActive && "bg-blue-800/20 text-blue-600 font-medium"
+                            isActive && "bg-primary/10 text-primary font-semibold"
                         )}
                         onClick={handleClick}
                     >

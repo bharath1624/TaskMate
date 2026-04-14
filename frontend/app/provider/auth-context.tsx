@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         const handleForceLogout = async () => {
             await logout();
-            navigate("/sign-in", { replace: true });
+            navigate("/", { replace: true });
         };
 
         window.addEventListener("force-logout", handleForceLogout);

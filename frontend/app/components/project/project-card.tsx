@@ -34,10 +34,13 @@ export const ProjectCard = ({
     workspaceId,
 }: ProjectCardProps) => {
 
-    // 1. Calculate Overdue Status
+    // 1. Calculate Status & Overdue
     const dueDate = project.dueDate ? new Date(project.dueDate) : null;
-    const isCompleted = ["Completed", "Done"].includes(project.status);
 
+    // ✅ FIX: Force isCompleted to be true if progress hits 100%
+    const isCompleted = progress === 100 || ["Completed", "Done"].includes(project.status);
+
+    // Because isCompleted is true at 100%, isOverdue will automatically become false!
     const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate) && !isCompleted;
     const isDueToday = dueDate && isToday(dueDate) && !isCompleted;
 
@@ -52,10 +55,13 @@ export const ProjectCard = ({
                         <span
                             className={cn(
                                 "text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border font-semibold whitespace-nowrap",
-                                getTaskStatusColor(project.status)
+                                // ✅ FIX: If completed, apply exact green classes directly. Otherwise, use the normal color function.
+                                isCompleted
+                                    ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400"
+                                    : getTaskStatusColor(project.status as any)
                             )}
                         >
-                            {project.status}
+                            {isCompleted ? "COMPLETED" : project.status}
                         </span>
                     </div>
                     <CardDescription className="line-clamp-2 mt-2 h-10 text-sm">
@@ -93,7 +99,7 @@ export const ProjectCard = ({
                                     <span>{project.tasks.length} Tasks</span>
                                 </div>
 
-                                {/* ✅ NEW: Time Logged Badge */}
+                                {/* Time Logged Badge */}
                                 {(project.totalTimeLogged !== undefined && project.totalTimeLogged > 0) && (
                                     <div className="flex items-center text-xs font-medium text-blue-600 dark:text-blue-400 gap-1.5 bg-blue-50 dark:bg-blue-900/20 w-fit px-2 py-1 rounded-md border border-blue-100 dark:border-blue-900/50">
                                         <Clock className="size-3.5" />
