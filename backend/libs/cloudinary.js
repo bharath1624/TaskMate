@@ -13,10 +13,6 @@ cloudinary.config({
 //   "image"  → jpg, png, gif, webp, svg
 //   "raw"    → pdf, doc, docx, xls, xlsx, ppt, pptx, txt, CSV and all others
 // Using "auto" causes CSV/TXT uploads to fail silently
-const getResourceType = (mimetype) => {
-    if (mimetype.startsWith("image/")) return "image";
-    return "raw";   // PDFs, Office docs, text, CSV — all go as raw
-};
 
 // ─── Profile picture storage (images only) ───────────────────────────────────
 export const profilePictureStorage = new CloudinaryStorage({
@@ -29,7 +25,10 @@ export const profilePictureStorage = new CloudinaryStorage({
     },
 });
 
-// ─── Attachment storage (all file types) ─────────────────────────────────────
+const getResourceType = (mimetype) => {
+    if (mimetype.startsWith("image/") || mimetype === "application/pdf") return "image";
+    return "raw";   // Office docs, text, CSV — all go as raw
+};
 // ─── Attachment storage (all file types) ─────────────────────────────────────
 export const attachmentStorage = new CloudinaryStorage({
     cloudinary,
@@ -43,12 +42,25 @@ export const attachmentStorage = new CloudinaryStorage({
         // 3. Clean the name
         const cleanName = nameWithoutExt.replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 80);
 
-        return {
-            folder: "taskmate/attachments",
-            resource_type: getResourceType(file.mimetype),
-            format: ext, // Tell Cloudinary the exact extension to use
-            public_id: `${Date.now()}-${cleanName}`,
-        };
+        const resType = getResourceType(file.mimetype);
+
+        // ✅ FIX: Cloudinary handles "raw" and "image" formatting completely differently
+        if (resType === "raw") {
+            // RAW files MUST have the extension inside the public_id and NO format parameter
+            return {
+                folder: "taskmate/attachments",
+                resource_type: "raw",
+                public_id: `${Date.now()}-${cleanName}.${ext}`,
+            };
+        } else {
+            // IMAGE & PDF files use the format parameter safely without double extensions
+            return {
+                folder: "taskmate/attachments",
+                resource_type: "image",
+                format: ext,
+                public_id: `${Date.now()}-${cleanName}`,
+            };
+        }
     },
 });
 

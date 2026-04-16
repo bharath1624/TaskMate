@@ -1,13 +1,13 @@
 import { projectSchema } from "@/lib/schema";
 import { ProjectStatus, type MemberProps } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react"; // ✅ Added useState
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "../ui/dialog";
@@ -32,7 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 
 import { format } from "date-fns";
-import { CalendarIcon, UserIcon, Users } from "lucide-react";
+import { CalendarIcon, UserIcon } from "lucide-react";
 import { Calendar } from "../ui/calendar";
 import { toast } from "sonner";
 import { UseCreateProject } from "@/hooks/use-project";
@@ -55,10 +55,13 @@ export const CreateProjectDialog = ({
     workspaceMembers,
 }: CreateProjectDialogProps) => {
 
-    // ✅ FIX: Get raw data and cast to 'any' to avoid TypeScript errors
     const { data: rawData } = useUserProfileQuery();
     const userData = rawData as any;
     const currentUserId = userData?.user?._id || userData?._id;
+
+    // ✅ Added states to control Popover visibility
+    const [isStartPopoverOpen, setIsStartPopoverOpen] = useState(false);
+    const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false);
 
     const form = useForm<CreateProjectFormData>({
         resolver: zodResolver(projectSchema),
@@ -135,7 +138,8 @@ export const CreateProjectDialog = ({
                                     <FormItem>
                                         <FormLabel>Project Title</FormLabel>
                                         <FormControl>
-                                            <Input {...field} />
+                                            <Input {...field}
+                                                placeholder="Enter Project name" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -147,9 +151,9 @@ export const CreateProjectDialog = ({
                                 name="description"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Project Description</FormLabel>
+                                        <FormLabel>Description</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} rows={3} value={field.value || ""} className="resize-none" />
+                                            <Textarea {...field} placeholder="Describe about project" rows={3} value={field.value || ""} className="resize-none" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -191,7 +195,8 @@ export const CreateProjectDialog = ({
                                         <FormItem>
                                             <FormLabel>Start Date</FormLabel>
                                             <FormControl>
-                                                <Popover modal={true}>
+                                                {/* ✅ Added open and onOpenChange props */}
+                                                <Popover modal={true} open={isStartPopoverOpen} onOpenChange={setIsStartPopoverOpen}>
                                                     <PopoverTrigger asChild>
                                                         <Button variant={"outline"} className={"w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : "")}>
                                                             <CalendarIcon className="size-4 mr-2 shrink-0" />
@@ -199,7 +204,15 @@ export const CreateProjectDialog = ({
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                field.onChange(date?.toISOString());
+                                                                setIsStartPopoverOpen(false); // ✅ Close popover on select
+                                                            }}
+                                                            initialFocus
+                                                        />
                                                     </PopoverContent>
                                                 </Popover>
                                             </FormControl>
@@ -214,7 +227,8 @@ export const CreateProjectDialog = ({
                                         <FormItem>
                                             <FormLabel>Due Date</FormLabel>
                                             <FormControl>
-                                                <Popover modal={true}>
+                                                {/* ✅ Added open and onOpenChange props */}
+                                                <Popover modal={true} open={isDuePopoverOpen} onOpenChange={setIsDuePopoverOpen}>
                                                     <PopoverTrigger asChild>
                                                         <Button variant={"outline"} className={"w-full justify-start text-left font-normal " + (!field.value ? "text-muted-foreground" : "")}>
                                                             <CalendarIcon className="size-4 mr-2 shrink-0" />
@@ -222,7 +236,15 @@ export const CreateProjectDialog = ({
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                field.onChange(date?.toISOString());
+                                                                setIsDuePopoverOpen(false); // ✅ Close popover on select
+                                                            }}
+                                                            initialFocus
+                                                        />
                                                     </PopoverContent>
                                                 </Popover>
                                             </FormControl>
@@ -275,7 +297,6 @@ export const CreateProjectDialog = ({
                                                         </Button>
                                                     </PopoverTrigger>
 
-                                                    {/* ✅ FIXED: Added side="top" so it opens upwards, avoiding the footer completely */}
                                                     <PopoverContent
                                                         className="w-(--radix-popover-trigger-width) p-2"
                                                         align="start"
@@ -324,7 +345,7 @@ export const CreateProjectDialog = ({
                             />
                         </div>
 
-                        {/* ✅ Fixed Footer (Always visible above everything else) */}
+                        {/* Fixed Footer */}
                         <div className="px-6 py-4 border-t bg-background shrink-0 mt-auto flex justify-end relative z-50">
                             <Button type="submit" disabled={isPending} className="w-full sm:w-auto shadow-sm">
                                 {isPending ? "Creating..." : "Create Project"}

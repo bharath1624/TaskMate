@@ -77,19 +77,25 @@ const openFile = (att: any) => {
     const category = getCategory(att.fileType, att.fileName);
     const ext = att.fileName.split(".").pop()?.toLowerCase() ?? "";
 
+    // ✅ FIX: Clean the URL coming from the database!
+    // If the DB accidentally saved 'fl_inline', this strips it out safely so Cloudinary accepts it.
+    let safeUrl = att.fileUrl;
+    if (safeUrl.includes("/upload/fl_inline/")) {
+        safeUrl = safeUrl.replace("/upload/fl_inline/", "/upload/");
+    }
+
     if (att.type === "url") {
-        window.open(att.fileUrl, "_blank", "noopener,noreferrer");
+        window.open(safeUrl, "_blank", "noopener,noreferrer");
         return;
     }
 
     if (category === "image" || category === "pdf" || ext === "csv" || category === "text") {
-        window.open(att.fileUrl, "_blank", "noopener,noreferrer");
+        window.open(safeUrl, "_blank", "noopener,noreferrer");
     } else {
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(att.fileUrl)}&embedded=false`;
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(safeUrl)}&embedded=false`;
         window.open(viewerUrl, "_blank", "noopener,noreferrer");
     }
 };
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const TaskAttachments = ({

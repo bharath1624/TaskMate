@@ -265,11 +265,28 @@ const getWorkspaceStats = async (req, res) => {
                 }
             }
         }
-        const projectStatusData = [{ name: "Completed", value: 0, color: "#10b981" }, { name: "In Progress", value: 0, color: "#3b82f6" }, { name: "Planning", value: 0, color: "#f59e0b" }];
+        const projectStatusData = [
+            { name: "Completed", value: 0, color: "#10b981" },
+            { name: "In Progress", value: 0, color: "#3b82f6" },
+            { name: "Planning", value: 0, color: "#f59e0b" }
+        ];
+
         for (const p of projects) {
-            if (p.status === "Completed") projectStatusData[0].value++;
-            else if (p.status === "In Progress") projectStatusData[1].value++;
-            else if (p.status === "Planning") projectStatusData[2].value++;
+            // 1. Calculate the project progress dynamically
+            const activeTasks = p.tasks.filter(t => !t.isArchived);
+            const totalTasks = activeTasks.length;
+            const completedTasks = activeTasks.filter(t => t.status === "Done").length;
+
+            const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+            // 2. Classify based on BOTH progress and explicit status
+            if (progress === 100 || ["Completed", "Done"].includes(p.status)) {
+                projectStatusData[0].value++; // Count as Completed
+            } else if (p.status === "Planning") {
+                projectStatusData[2].value++; // Count as Planning
+            } else {
+                projectStatusData[1].value++; // Count as In Progress
+            }
         }
         const taskPriorityData = [{ name: "High", value: 0, color: "#ef4444" }, { name: "Medium", value: 0, color: "#f59e0b" }, { name: "Low", value: 0, color: "#6b7280" }];
         for (const t of tasks) {

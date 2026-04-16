@@ -25,13 +25,16 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-// Inline script to prevent FOUC — runs before React hydrates
+// ✅ FIX: Modified to default to light mode. 
+// It will now ONLY apply dark mode if the user explicitly clicked a dark mode toggle.
 const themeScript = `
 (function() {
   try {
     var t = localStorage.getItem('taskmate-theme');
-    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (t === 'dark') {
       document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   } catch(e) {}
 })();

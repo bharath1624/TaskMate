@@ -67,6 +67,9 @@ export const CreateTaskDialog = ({
     const { user: currentUser } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
 
+    // ✅ Added state to control the Due Date Popover visibility
+    const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false);
+
     const form = useForm<CreateTaskFormData>({
         resolver: zodResolver(createTaskSchema),
         defaultValues: {
@@ -215,7 +218,8 @@ export const CreateTaskDialog = ({
                                         <FormItem>
                                             <FormLabel>Due Date</FormLabel>
                                             <FormControl>
-                                                <Popover modal={true}>
+                                                {/* ✅ Added open and onOpenChange props */}
+                                                <Popover modal={true} open={isDuePopoverOpen} onOpenChange={setIsDuePopoverOpen}>
                                                     <PopoverTrigger asChild>
                                                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
                                                             <CalendarIcon className="size-4 mr-2" />
@@ -223,7 +227,15 @@ export const CreateTaskDialog = ({
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? new Date(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                field.onChange(date?.toISOString());
+                                                                setIsDuePopoverOpen(false); // ✅ Close popover on select
+                                                            }}
+                                                            initialFocus
+                                                        />
                                                     </PopoverContent>
                                                 </Popover>
                                             </FormControl>

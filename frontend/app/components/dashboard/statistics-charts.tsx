@@ -352,9 +352,15 @@ export const StatisticsCharts = ({
                                 <ChartContainer
                                     className="h-[300px]"
                                     config={{
-                                        completed: { color: "#3b82f6" },
-                                        // ✅ FIX: Removed the hsl() wrapper. Just var(--foreground) since your CSS already has oklch()
-                                        total: { color: "var(--foreground)" },
+                                        total: {
+                                            label: "Total Tasks",
+                                            color: "var(--foreground)"
+                                        },
+                                        completed: {
+                                            // ✅ FIX: Added \u00A0 (non-breaking space) to guarantee a gap
+                                            label: "Completed Tasks\u00A0",
+                                            color: "#3b82f6"
+                                        },
                                     }}
                                 >
                                     <BarChart
@@ -377,24 +383,24 @@ export const StatisticsCharts = ({
                                             axisLine={false}
                                         />
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
 
+                                        {/* ✅ FIX: Added a min-width to give the text more room to breathe */}
+                                        <ChartTooltip cursor={false} content={<ChartTooltipContent className="min-w-40" />} />
+
+                                        {/* ✅ FIX: Removed the manual 'name' props. Shadcn handles it automatically via the config above! */}
                                         <Bar
                                             dataKey="total"
                                             fill="var(--color-total)"
                                             radius={[4, 4, 0, 0]}
-                                            name="Total Tasks "
                                         />
                                         <Bar
                                             dataKey="completed"
                                             fill="var(--color-completed)"
                                             radius={[4, 4, 0, 0]}
-                                            name="Completed Tasks "
                                         />
                                     </BarChart>
                                 </ChartContainer>
                             </div>
-
                             {/* RIGHT SIDE LEGEND */}
                             <div className="space-y-3 text-sm">
                                 <div className="flex items-center gap-3">

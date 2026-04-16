@@ -92,54 +92,52 @@ export const TaskTimeTracker = ({ taskId, canEdit, isOwner = false }: Props) => 
                 <span className="text-sm font-mono font-bold text-primary">{formatDuration(totalSeconds)}</span>
             </div>
 
-            {!isOwner && (
-                <div>
-                    {isMySession ? (
-                        <div className="relative rounded-xl bg-primary/5 border border-primary/20 p-4 transition-all shadow-inner">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse rounded-l-xl"></div>
-                            <div className="flex flex-col gap-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="relative flex h-2.5 w-2.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60"></span>
-                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                                        </span>
-                                        <span className="text-sm font-medium text-primary">Recording...</span>
-                                    </div>
-                                    <div className="text-2xl font-mono font-bold tracking-widest text-primary drop-shadow-sm">
-                                        {formatDuration(elapsed)}
-                                    </div>
+            <div>
+                {isMySession ? (
+                    <div className="relative rounded-xl bg-primary/5 border border-primary/20 p-4 transition-all shadow-inner">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse rounded-l-xl"></div>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="relative flex h-2.5 w-2.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                                    </span>
+                                    <span className="text-sm font-medium text-primary">Recording...</span>
                                 </div>
-                                <div className="flex gap-2 items-center mt-2">
-                                    <Input
-                                        value={stopNote}
-                                        onChange={(e) => setStopNote(e.target.value)}
-                                        placeholder="What are you working on?"
-                                        className="h-10 bg-background/60 border-primary/20 focus-visible:ring-primary/40 transition-shadow text-sm"
-                                    />
-                                    <Button
-                                        onClick={handleStop}
-                                        disabled={isStopping}
-                                        className="h-10 px-5 bg-red-500 hover:bg-red-600 text-white shadow-md transition-transform active:scale-95 group"
-                                    >
-                                        <Square className="size-4 mr-2 fill-current group-hover:scale-90 transition-transform" />
-                                        Stop
-                                    </Button>
+                                <div className="text-2xl font-mono font-bold tracking-widest text-primary drop-shadow-sm">
+                                    {formatDuration(elapsed)}
                                 </div>
                             </div>
+                            <div className="flex gap-2 items-center mt-2">
+                                <Input
+                                    value={stopNote}
+                                    onChange={(e) => setStopNote(e.target.value)}
+                                    placeholder="What are you working on?"
+                                    className="h-10 bg-background/60 border-primary/20 focus-visible:ring-primary/40 transition-shadow text-sm"
+                                />
+                                <Button
+                                    onClick={handleStop}
+                                    disabled={isStopping}
+                                    className="h-10 px-5 bg-red-500 hover:bg-red-600 text-white shadow-md transition-transform active:scale-95 group"
+                                >
+                                    <Square className="size-4 mr-2 fill-current group-hover:scale-90 transition-transform" />
+                                    Stop
+                                </Button>
+                            </div>
                         </div>
-                    ) : (
-                        <Button
-                            onClick={handleStart}
-                            disabled={isStarting}
-                            className="w-full h-11 border-dashed border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary transition-all duration-300 group rounded-xl"
-                        >
-                            <Play className="size-4 mr-2 group-hover:scale-110 transition-transform fill-primary/80" />
-                            <span className="font-semibold text-sm">Start Timer</span>
-                        </Button>
-                    )}
-                </div>
-            )}
+                    </div>
+                ) : (
+                    <Button
+                        onClick={handleStart}
+                        disabled={isStarting}
+                        className="w-full h-11 border-dashed border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary transition-all duration-300 group rounded-xl"
+                    >
+                        <Play className="size-4 mr-2 group-hover:scale-110 transition-transform fill-primary/80" />
+                        <span className="font-semibold text-sm">Start Timer</span>
+                    </Button>
+                )}
+            </div>
 
             <div>
                 <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">

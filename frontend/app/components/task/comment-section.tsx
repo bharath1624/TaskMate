@@ -273,7 +273,7 @@ export const CommentSection = ({
                         onClick={handleAddComment}
                         className="rounded-lg px-6 h-9 shadow-sm"
                     >
-                        {isPending ? "..." : "Send Comment"}
+                        {isPending ? "..." : "Send"}
                     </Button>
                 </div>
             </div>

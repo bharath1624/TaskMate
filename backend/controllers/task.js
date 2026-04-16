@@ -205,18 +205,58 @@ const updateTaskStatus = async (req, res) => {
         const task = await Task.findById(taskId);
         if (!task) return res.status(404).json({ message: "Task not found" });
 
-        // NOTE: Even regular members usually need to update status. 
-        // checkTaskAccess returns isAuthorized=true for members.
-        const { isAuthorized } = await checkTaskAccess(req, task.project);
+        // checkTaskAccess returns the project data we need!
+        const { project, isAuthorized } = await checkTaskAccess(req, task.project);
         if (!isAuthorized) return res.status(403).json({ message: "Not authorized" });
 
         task.status = status;
         await task.save();
         await recordActivity(req.user._id, "updated_task", "Task", taskId, { description: `updated task status to ${status}` });
 
+        // ================================================================
+        // ✅ APPROACH 2: AUTOMATIC PROJECT COMPLETION TRIGGER
+        // ================================================================
+        // 1. Fetch all active tasks for this specific project
+        const allTasks = await Task.find({ project: project._id, isArchived: false });
+
+        if (allTasks.length > 0) {
+            // 2. Calculate the progress exactly like the frontend does
+            const completedCount = allTasks.filter(t => t.status === "Done").length;
+            const progress = Math.round((completedCount / allTasks.length) * 100);
+
+            let newProjectStatus = project.status;
+
+            // 3. If progress hits 100%, automatically graduate it to Completed!
+            if (progress === 100 && project.status !== "Completed") {
+                newProjectStatus = "Completed";
+            }
+            // 4. (Optional but smart): If the project WAS completed, but a user 
+            // moves a task backward (out of "Done"), automatically revert it to "In Progress"
+            else if (progress < 100 && project.status === "Completed") {
+                newProjectStatus = "In Progress";
+            }
+
+            // 5. If the status needs to change, save it to MongoDB!
+            if (newProjectStatus !== project.status) {
+                await Project.findByIdAndUpdate(project._id, { status: newProjectStatus });
+
+                // (Optional) Emit a socket event to update the workspace dashboard in real-time
+                if (global.io && project.workspace) {
+                    global.io.to(project.workspace.toString()).emit("project_updated", {
+                        projectId: project._id,
+                        status: newProjectStatus
+                    });
+                }
+            }
+        }
+        // ================================================================
+
         if (global.io) global.io.to(task.project.toString()).emit("task_updated", task);
         res.status(200).json(task);
-    } catch (error) { console.error(error); return res.status(500).json({ message: "Internal server error" }); }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
 };
 
 const updateTaskAssignees = async (req, res) => {
@@ -892,7 +932,6 @@ const getTaskContext = async (taskId, userId) => {
     return { task, project, workspace };
 };
 
-// POST /tasks/:taskId/time/start
 // Start a new timer session. Stops any currently running session first.
 export const startTimer = async (req, res) => {
     try {
@@ -938,7 +977,6 @@ export const startTimer = async (req, res) => {
     }
 };
 
-// POST /tasks/:taskId/time/stop
 // Stop the currently running timer for this user on this task
 export const stopTimer = async (req, res) => {
     try {
@@ -971,7 +1009,6 @@ export const stopTimer = async (req, res) => {
     }
 };
 
-// GET /tasks/:taskId/time
 // Get time logs based on Role (Member = Own, Admin/Owner = All)
 export const getTimeLogs = async (req, res) => {
     try {
@@ -1020,7 +1057,6 @@ export const getTimeLogs = async (req, res) => {
     }
 };
 
-// DELETE /tasks/:taskId/time/:logId
 // Delete a specific time log entry
 
 export const deleteTimeLog = async (req, res) => {

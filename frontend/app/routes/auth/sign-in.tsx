@@ -12,7 +12,8 @@ import { useLoginMutation } from "@/hooks/use-auth";
 import { signInSchema } from "@/lib/schema";
 import { useAuth } from "@/provider/auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Layout } from "lucide-react";
+import { Loader2, Layout, Eye, EyeOff } from "lucide-react"; // Added Eye and EyeOff
+import { useState } from "react"; // Added useState
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -23,6 +24,9 @@ type SigninFormData = z.infer<typeof signInSchema>;
 const SignIn = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    // State to toggle password visibility
+    const [showPassword, setShowPassword] = useState(false);
 
     const form = useForm<SigninFormData>({
         resolver: zodResolver(signInSchema),
@@ -37,13 +41,8 @@ const SignIn = () => {
     const handleOnSubmit = (values: SigninFormData) => {
         mutate(values, {
             onSuccess: async (data: any) => {
-                // 1. Save session (This triggers AuthProvider to handle invites)
                 await login(data);
-
                 toast.success("Welcome back!");
-
-                // 2. Simply navigate. AuthProvider will detect the inviteToken 
-                // in localStorage and redirect to the workspace automatically.
                 navigate("/dashboard");
             },
             onError: (error: any) => {
@@ -55,12 +54,9 @@ const SignIn = () => {
 
     return (
         <div className="min-h-screen w-full flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-            {/* ✅ FIX: Applied the softer theme background to the entire page wrapper. 
-                Comment is now safely inside the root div! */}
 
             {/* ================= LEFT SIDE: THEME-AWARE VISUAL ARTWORK ================= */}
             <div className="hidden lg:flex relative w-1/2 items-center justify-center overflow-hidden">
-
                 {/* Logo top left */}
                 <div className="absolute top-10 left-10 z-30 flex items-center gap-3">
                     <div className="bg-linear-to-br from-blue-500 to-blue-700 p-2.5 rounded-xl shadow-lg shadow-blue-600/30 border border-blue-400/20">
@@ -80,11 +76,7 @@ const SignIn = () => {
 
                 {/* === CENTRAL GLASS COMPOSITION === */}
                 <div className="relative z-20 w-full max-w-[480px] mx-auto">
-
-                    {/* Glowing Aura behind main card */}
                     <div className="absolute inset-0 bg-linear-to-br from-indigo-500 to-blue-600 rounded-3xl blur-3xl opacity-30 dark:opacity-20 transform rotate-2" />
-
-                    {/* Main Mockup Card */}
                     <div className="relative bg-white/70 dark:bg-white/5 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl shadow-slate-300/50 dark:shadow-black/50 p-8 flex flex-col gap-6">
 
                         {/* Profile Header Skeleton */}
@@ -106,8 +98,6 @@ const SignIn = () => {
                                 <div className="h-4 w-32 bg-slate-200 dark:bg-white/10 rounded-md" />
                                 <div className="h-4 w-12 bg-blue-500/50 rounded-md" />
                             </div>
-
-                            {/* Progress Bars */}
                             <div className="space-y-3">
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between">
@@ -219,13 +209,28 @@ const SignIn = () => {
                                                 Forgot password?
                                             </Link>
                                         </div>
-                                        <FormControl>
-                                            <Input
-                                                type="password"
-                                                className="h-12 bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-transparent transition-all"
-                                                {...field}
-                                            />
-                                        </FormControl>
+
+                                        {/* ✅ FIX: The relative div is now OUTSIDE the FormControl */}
+                                        <div className="relative">
+                                            <FormControl>
+                                                <Input
+                                                    type={showPassword ? "text" : "password"}
+                                                    className="h-12 bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:border-transparent transition-all pr-10"
+                                                    {...field}
+                                                />
+                                            </FormControl>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 transition-colors"
+                                            >
+                                                {showPassword ? (
+                                                    <EyeOff className="size-5" />
+                                                ) : (
+                                                    <Eye className="size-5" />
+                                                )}
+                                            </button>
+                                        </div>
                                         <FormMessage />
                                     </FormItem>
                                 )}

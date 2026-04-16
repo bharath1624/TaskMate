@@ -96,12 +96,16 @@ export const CreateWorkspace = ({
                                     <FormItem>
                                         <FormLabel>Name</FormLabel>
                                         <FormControl>
-                                            <Input {...field} />
+                                            <Input
+                                                {...field}
+                                                placeholder="Enter Workspace name"
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
+
                             <FormField
                                 control={form.control}
                                 name="description"
@@ -111,13 +115,25 @@ export const CreateWorkspace = ({
                                         <FormControl>
                                             <Textarea
                                                 {...field}
+                                                placeholder="What is this workspace for?"
                                                 rows={3}
+                                                // resize-none stops manual dragging
+                                                // overflow-hidden hides the scrollbar as it expands
+                                                className="resize-none overflow-hidden min-h-20"
+                                                onInput={(e) => {
+                                                    const target = e.target as HTMLTextAreaElement;
+                                                    // Reset height to auto to get the correct scrollHeight on backspace
+                                                    target.style.height = "auto";
+                                                    // Set height to match the new scrollHeight
+                                                    target.style.height = `${target.scrollHeight}px`;
+                                                }}
                                             />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
+
                             <FormField
                                 control={form.control}
                                 name="color"
